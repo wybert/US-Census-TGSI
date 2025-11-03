@@ -1,5 +1,7 @@
 import os
 import json
+import sys
+import argparse
 
 os.environ["USE_PYGEOS"] = "0"
 import geopandas as gpd
@@ -9,6 +11,13 @@ pandarallel.initialize(progress_bar=False)
 import pandas as pd
 from tqdm import tqdm
 import datetime
+
+# Parse command line arguments
+parser = argparse.ArgumentParser(description='Spatial join between tweets and census blocks')
+parser.add_argument('--year', type=int, help='Process only specific year (e.g., 2010 for testing)')
+parser.add_argument('--start-year', type=int, default=2010, help='Start year (default: 2010)')
+parser.add_argument('--end-year', type=int, default=2023, help='End year (default: 2023)')
+args = parser.parse_args()
 
 # Load configuration
 with open('setting.json') as f:
@@ -40,11 +49,23 @@ def spatial_join(row, blocks_gdf, block_suffix):
 input_path_base = config['geotweets_with_sentiment']
 output_path_base = config['tweets_with_census_blocks']
 census_data_path = config['census_data_2020']
-# year = 2023
+
+# Determine which years to process
+if args.year:
+    years_to_process = [args.year]
+    print(f"\n{'='*60}")
+    print(f"TEST MODE: Processing only year {args.year}")
+    print(f"{'='*60}\n")
+else:
+    years_to_process = range(args.start_year, args.end_year + 1)
+    print(f"\n{'='*60}")
+    print(f"FULL MODE: Processing years {args.start_year} to {args.end_year}")
+    print(f"{'='*60}\n")
+
 t1 = datetime.datetime.now()
 # read file paths
 files_df = pd.DataFrame()
-for year in range(2010, 2024):
+for year in years_to_process:
     input_path = os.path.join(input_path_base, str(year))
 
     # Check if directory exists

@@ -126,6 +126,12 @@ rule merge_tweets_sentiment:
 rule spatial_join:
     """
     Spatial join between tweets and census blocks using GeoPandas
+
+    This script supports command-line arguments:
+    - Full mode (default): processes all years 2010-2023
+    - Test mode: use --year 2010 to test with just 2010 data
+
+    To test: python 0.3.2-xiaokang-sjoin-geopandas-us-census-script-version.py --year 2010
     """
     input:
         script="0.3.2-xiaokang-sjoin-geopandas-us-census-script-version.py",
