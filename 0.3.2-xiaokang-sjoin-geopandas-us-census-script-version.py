@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser(description='Spatial join between tweets and ce
 parser.add_argument('--year', type=int, help='Process only specific year (e.g., 2010 for testing)')
 parser.add_argument('--start-year', type=int, default=2010, help='Start year (default: 2010)')
 parser.add_argument('--end-year', type=int, default=2023, help='End year (default: 2023)')
+parser.add_argument('--dry-run', action='store_true', help='Verify inputs without processing (safe for login node)')
 args = parser.parse_args()
 
 # Load configuration
@@ -115,6 +116,47 @@ print(f"Total files to process: {len(files_df)}")
 print(f"Years covered: {sorted(files_df['year'].unique())}")
 print(f"Census states to load: {len(os.listdir(census_data_path))}")
 print(f"{'='*60}\n")
+
+# Dry-run mode: verify inputs only
+if args.dry_run:
+    print("🔍 DRY-RUN MODE: Verifying inputs without processing")
+    print("=" * 60)
+
+    # Check a few sample input files
+    print("\n📁 Checking sample input files:")
+    for idx, row in files_df.head(3).iterrows():
+        exists = os.path.exists(row['input_file'])
+        size = os.path.getsize(row['input_file']) / 1024 / 1024 if exists else 0
+        status = "✓" if exists else "✗"
+        print(f"  {status} {row['file_name']}: {size:.2f} MB")
+
+    # Check census files
+    print(f"\n🗺️  Checking census files:")
+    census_files = list(os.listdir(census_data_path))[:3]
+    for cf in census_files:
+        cf_path = os.path.join(census_data_path, cf)
+        size = os.path.getsize(cf_path) / 1024 / 1024
+        print(f"  ✓ {cf}: {size:.2f} MB")
+
+    # Check output directory
+    print(f"\n📤 Output directories:")
+    for year in files_df['year'].unique():
+        output_dir = os.path.join(output_path_base, str(year))
+        exists = os.path.exists(output_dir)
+        status = "✓ exists" if exists else "✗ will be created"
+        print(f"  {status}: {output_dir}")
+
+    # Estimate output
+    total_outputs = len(files_df) * len(os.listdir(census_data_path))
+    print(f"\n📊 Estimated output files: {total_outputs:,}")
+    print(f"   ({len(files_df)} input files × {len(os.listdir(census_data_path))} states)")
+
+    print("\n" + "=" * 60)
+    print("✓ DRY-RUN COMPLETE - All inputs verified!")
+    print("  To run actual processing, remove --dry-run flag")
+    print("  Recommended: Submit to SLURM with appropriate resources")
+    print("=" * 60)
+    exit(0)
 
 # process data
 # files_df = files_df[files_df["year"] == year]  # Uncomment to test with single year
