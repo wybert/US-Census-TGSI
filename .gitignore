@@ -1,0 +1,84 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+*.egg-info/
+dist/
+build/
+.eggs/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Data files (large files should not be in git)
+*.parquet
+*.csv.gz
+*.h5
+*.hdf5
+*.feather
+*.pkl
+*.pickle
+
+# Compressed archives
+*.zip
+*.tar.gz
+*.tgz
+*.bz2
+
+# Output files
+outputs/
+*.png
+*.jpg
+*.jpeg
+*.pdf
+*.svg
+
+# SLURM logs
+*.out
+*.err
+slurm-*.out
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-*
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# R
+.Rhistory
+.RData
+.Rproj.user
+
+# System files
+Thumbs.db
+desktop.ini
+
+# Snakemake
+.snakemake/
+*.snakemake.log
+
+# Specific to this project - keep configuration but ignore large data
+# We want to track scripts and config but not data
+/data/
+*.log
+
+# But DO track certain important files
+!setting.json
+!CLAUDE.md
+!README.md

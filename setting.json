@@ -1,0 +1,14 @@
+{
+  "geo_tweets_archive_base_path": "/n/holylabs/LABS/cga/Lab/data/geo-tweets/cga-sbg-tweets",
+  "sentiment_file_base_path": "/n/holylabs/LABS/cga/Lab/data/geo-tweets/cga-sbg-sentiment",
+  "workspace": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace",
+  "statistic_results": "/n/holylabs/LABS/cga/Lab/data/geo-tweets/cga-sbg-census/paper-plot-data",
+  "census_pop": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/data/census_pop/pop data",
+  "places_data": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/data/500-Cities-Places",
+  "census_geometry": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/data/census_data",
+  "geotweets_with_sentiment": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/data/geotweets_with_sentiment",
+  "tweets_with_census_blocks": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/data/tweets_with_census_blocks",
+  "census_data_2020": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/data/census_data_2020",
+  "sentiment_by_tract": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/sentiment_by_tract",
+  "outputs_dir": "/n/home11/xiaokangfu/xiaokang/US-Census-TGSI/outputs"
+}
