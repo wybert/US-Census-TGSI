@@ -8,7 +8,9 @@
   "census_geometry": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/data/census_data",
   "geotweets_with_sentiment": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/data/geotweets_with_sentiment",
   "tweets_with_census_blocks": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/data/tweets_with_census_blocks",
+  "tweets_with_census_blocks_confidence": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/data/tweets_with_census_blocks_confidence",
   "census_data_2020": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/data/census_data_2020",
   "sentiment_by_tract": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/sentiment_by_tract",
-  "outputs_dir": "/n/home11/xiaokangfu/xiaokang/US-Census-TGSI/outputs"
+  "outputs_dir": "/n/home11/xiaokangfu/xiaokang/US-Census-TGSI/outputs",
+  "sentiment_computing_path": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/sentiment_computing_path"
 }

@@ -58,6 +58,13 @@ rule download_only:
         expand(config['census_data_2020'] + "/tl_2020_{state}_tabblock20.zip",
                state=STATES)
 
+rule check_data_quality:
+    """
+    Check data quality before processing (sentiment file validation)
+    """
+    input:
+        config['outputs_dir'] + "/missing_sentiment_summary.txt"
+
 rule validation_only:
     """
     Run validation analysis only
@@ -95,6 +102,32 @@ rule download_census_data:
         python 0.1-download_cenus_data.py > {log} 2>&1
         """
 
+# ========== Data Validation ==========
+
+rule find_missing_sentiment:
+    """
+    Find missing sentiment files before merging
+    """
+    input:
+        script="0.1.5-find-missing-sentiment-files.py",
+        config="setting.json"
+    output:
+        missing=config['outputs_dir'] + "/missing_sentiment_files.csv",
+        existing=config['outputs_dir'] + "/existing_sentiment_files.csv",
+        stats=config['outputs_dir'] + "/sentiment_files_statistics.csv",
+        summary=config['outputs_dir'] + "/missing_sentiment_summary.txt"
+    log:
+        "outputs/logs/find_missing_sentiment.log"
+    resources:
+        cpus=1,
+        mem_mb=4000,
+        time="00:30:00",
+        partition="shared"
+    shell:
+        """
+        python {input.script} > {log} 2>&1
+        """
+
 # ========== Tweet-Sentiment Merging ==========
 
 rule merge_tweets_sentiment:
@@ -104,7 +137,8 @@ rule merge_tweets_sentiment:
     """
     input:
         script="0.2.1-combine-geo-tweets-archive-and-sentiment.py",
-        config="setting.json"
+        config="setting.json",
+        validation=config['outputs_dir'] + "/missing_sentiment_summary.txt"
     output:
         # Mark completion with a flag file
         flag=config['geotweets_with_sentiment'] + "/.merge_complete"
@@ -125,24 +159,36 @@ rule merge_tweets_sentiment:
 
 rule spatial_join:
     """
-    Spatial join between tweets and census blocks using GeoPandas
+    Spatial join between tweets and census blocks with confidence weighting
 
-    This script supports command-line arguments:
+    This script adds:
+    - GPS field preservation (for high-quality subset analysis)
+    - Confidence scores (based on spatialerror vs block size)
+
+    Output includes both GPS flag and confidence field for flexible post-processing:
+    - GPS high-quality analysis: df[df['GPS'] == True]
+    - Weighted analysis: use confidence field
+    - Threshold filtering: df[df['confidence'] >= threshold]
+
+    Output directory: tweets_with_census_blocks_confidence (separate from old output)
+
+    Command-line arguments:
     - Full mode (default): processes all years 2010-2023
     - Test mode: use --year 2010 to test with just 2010 data
+    - Dry-run mode: use --dry-run to verify inputs without processing
 
-    To test: python 0.3.2-xiaokang-sjoin-geopandas-us-census-script-version.py --year 2010
+    To test: python 0.3.3-spatial-join-with-confidence.py --year 2010 --dry-run
     """
     input:
-        script="0.3.2-xiaokang-sjoin-geopandas-us-census-script-version.py",
+        script="0.3.3-spatial-join-with-confidence.py",
         tweets_flag=config['geotweets_with_sentiment'] + "/.merge_complete",
         census=expand(config['census_data_2020'] + "/tl_2020_{state}_tabblock20.zip",
                      state=STATES),
         config="setting.json"
     output:
-        flag=config['tweets_with_census_blocks'] + "/.spatial_join_complete"
+        flag=config['tweets_with_census_blocks_confidence'] + "/.spatial_join_confidence_complete"
     log:
-        "outputs/logs/spatial_join.log"
+        "outputs/logs/spatial_join_confidence.log"
     resources:
         cpus=110,
         mem_mb=900000,
@@ -150,7 +196,7 @@ rule spatial_join:
         partition="sapphire"
     shell:
         """
-        python {input.script} > {log} 2>&1
+        python {input.script} --start-year 2010 --end-year 2023 > {log} 2>&1
         touch {output.flag}
         """
 

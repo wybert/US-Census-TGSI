@@ -1,0 +1,261 @@
+================================================================================
+        US-Census-TGSI 数据处理流程图 (Data Pipeline Flowchart)
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         第0步：数据准备 (Data Preparation)                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌──────────────────────┐
+    │  0.1 数据下载         │
+    │  Download Census     │
+    │  TIGER/Line          │
+    │  Shapefiles          │
+    └──────────┬───────────┘
+               │ 51 states (TABBLOCK20)
+               ▼
+    ┌──────────────────────┐
+    │  Census 2020         │
+    │  Block Geometries    │
+    │  (Shapefiles)        │
+    └──────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│              第0.5步：数据完整性验证 (Data Validation)                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────┐         ┌──────────────────────┐
+│  Raw Geotagged       │         │  BERT Sentiment      │
+│  Tweets Archive      │         │  Scores Directory    │
+└──────────┬───────────┘         └──────────┬───────────┘
+           │                                │
+           │   0.1.5 Find Missing Script    │
+           │   Check file correspondence    │
+           └────────────┬───────────────────┘
+                        │
+                        ▼
+           ┌────────────────────────┐
+           │  Validation Reports    │
+           │  • missing_sentiment_  │
+           │    files.csv (5,010)   │
+           │  • sentiment_files_    │
+           │    statistics.csv      │
+           │  • missing_sentiment_  │
+           │    summary.txt         │
+           └────────────┬───────────┘
+                        │
+                        │ If missing files found
+                        ▼
+           ┌────────────────────────┐
+           │  0.1.6-0.1.8 Scripts   │
+           │  Recompute Missing     │
+           │  Sentiment Files       │
+           │                        │
+           │  Using GPU + BERT:     │
+           │  • 2014: 3,986 files   │
+           │  • 2017: 513 files     │
+           │  • 2020: 1 file        │
+           │  • 2023: 510 files     │
+           └────────────┬───────────┘
+                        │
+                        ├─→ 0.1.6: Compute (GPU)
+                        ├─→ 0.1.7: Submit jobs
+                        ├─→ 0.1.8: Verify & copy
+                        │
+                        ▼
+           ┌────────────────────────┐
+           │  Complete Sentiment    │
+           │  Dataset               │
+           │  (98,584 files)        │
+           └────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                   第1步：推文-情感合并 (Tweet-Sentiment Merge)               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────┐         ┌──────────────────────┐
+│  Raw Geotagged       │         │  BERT Sentiment      │
+│  Tweets Archive      │         │  Scores              │
+│  (TSV.GZ)            │         │  (TSV.GZ)            │
+│  ~TB scale           │         │  Per-file            │
+└──────────┬───────────┘         └──────────┬───────────┘
+           │                                │
+           │         0.2-0.3 Scripts        │
+           │      (pandarallel merge)       │
+           │      ⚠️ Validated inputs       │
+           └────────────┬───────────────────┘
+                        │ Join on message_id
+                        ▼
+           ┌────────────────────────┐
+           │  Merged Tweet +        │
+           │  Sentiment Data        │
+           │  (.parquet files)      │
+           │                        │
+           │  Columns: message_id,  │
+           │  lat, lon, score,      │
+           │  date, ...             │
+           └────────────┬───────────┘
+                        │
+                        │ ~93,574 files
+                        │ (2010-2024)
+                        ▼
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                   第2步：空间连接 (Spatial Join)                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────┐         ┌──────────────────────┐
+│  Tweets with         │         │  Census Block        │
+│  Sentiment           │         │  Geometries          │
+│  (lat/lon points     │         │  (51 states)         │
+│   + GPS field        │         │                      │
+│   + spatialerror)    │         │                      │
+└──────────┬───────────┘         └──────────┬───────────┘
+           │                                │
+           │    0.3.3 Spatial Join Script   │
+           │    (with Confidence Weighting) │
+           │    Point-in-Polygon            │
+           └────────────┬───────────────────┘
+                        │ EPSG:4326 matching
+                        │ Block size calculation
+                        │ ~4.77M operations
+                        ▼
+           ┌────────────────────────┐
+           │  Tweets with Census    │
+           │  Block IDs + Quality   │
+           │  (.parquet files)      │
+           │                        │
+           │  Added Fields:         │
+           │  • GEOID20, TRACTCE20  │
+           │  • block_area_m2       │
+           │  • block_diameter_m    │
+           │  • GPS (Boolean)       │
+           │  • confidence (0.05-1.0│
+           └────────────┬───────────┘
+                        │
+                        │ 1 input → 51 outputs
+                        │ (per state)
+                        ▼
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                第3步：聚合与指标计算 (Aggregation & Metrics)                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────┐         ┌──────────────────────┐
+│  Tweets with         │         │  Census Population   │
+│  GEOID20             │         │  Data (parquet)      │
+└──────────┬───────────┘         └──────────┬───────────┘
+           │                                │
+           │    0.6.1 DuckDB Aggregation    │
+           │    Block → Tract level         │
+           └────────────┬───────────────────┘
+                        │ Population-weighted
+                        ▼
+           ┌────────────────────────┐
+           │  Tract-level           │
+           │  Aggregated Data       │
+           │                        │
+           │  Metrics:              │
+           │  • Tweet counts        │
+           │  • Avg sentiment       │
+           │  • CR (Coverage Ratio) │
+           │  • log2(CR)            │
+           └────────────┬───────────┘
+                        │
+                        │
+                        ▼
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                  第4步：验证与可视化 (Validation & Visualization)            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+           ┌────────────────────────┐
+           │  Tract-level Data      │
+           └────────────┬───────────┘
+                        │
+           ┌────────────┴────────────────────┐
+           │                                 │
+           ▼                                 ▼
+┌──────────────────────┐         ┌──────────────────────┐
+│  0.4.x Scripts       │         │  0.4.7 Gini &        │
+│  • DuckDB validation │         │  Lorenz Curves       │
+│  • Choropleth maps   │         │  (Representativeness)│
+│  • log2(CR) viz      │         │                      │
+└──────────────────────┘         └──────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│              第5步：健康指标相关性分析 (Health Correlation Analysis)         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────┐         ┌──────────────────────┐
+│  Tract-level         │         │  CDC PLACES          │
+│  Sentiment Data      │         │  Health Indicators   │
+│  (avg sentiment,     │         │  (e.g., MHLTH_       │
+│   tweet counts)      │         │   CrudePrev)         │
+└──────────┬───────────┘         └──────────┬───────────┘
+           │                                │
+           │    0.6.x Correlation Scripts   │
+           │    (Spearman/Pearson)          │
+           │    Weighted & Unweighted       │
+           └────────────┬───────────────────┘
+                        │ Filter: mask_low_coverage
+                        │ (≥20 tweets)
+                        ▼
+           ┌────────────────────────┐
+           │  Statistical Results   │
+           │  • Correlation coef.   │
+           │  • P-values            │
+           │  • Scatter plots       │
+           │  • Decile curves       │
+           └────────────────────────┘
+
+
+================================================================================
+                              关键指标说明 (Key Metrics)
+================================================================================
+
+CR (Coverage Ratio) = tweet_count / population
+    衡量推文在该区域的代表性
+
+log2(CR) = log2(CR值)
+    0  = 比例代表 (proportional)
+    -1 = 50% 代表不足 (underrepresented)
+    +1 = 200% 过度代表 (overrepresented)
+
+mask_low_coverage = 过滤 <20 tweets 的tract
+    避免虚假相关性
+
+Population Weighting = 使用人口加权计算tract级别的平均情感
+    确保统计代表性
+
+
+================================================================================
+                            处理规模 (Processing Scale)
+================================================================================
+
+• 时间范围：2010-2024 (15 years)
+• 输入文件：~93,574 parquet files
+• 空间连接：93,574 × 51 states = ~4.77M operations
+• 计算资源：110 cores, 900GB RAM, ~40-50 hours
+• 地理级别：Census Blocks (15-digit GEOID) → Tracts (11-digit)
+
+
+================================================================================
+                            配置文件 (Configuration)
+================================================================================
+
+所有数据路径在 setting.yaml 中定义：
+  • geo_tweets_archive_base_path: 原始推文
+  • sentiment_file_base_path: 情感分数
+  • workspace: 工作目录
+  • census_pop: 人口数据
+  • 500-Cities-Places: CDC健康数据
+  • census_geometry: 几何数据
+
+================================================================================

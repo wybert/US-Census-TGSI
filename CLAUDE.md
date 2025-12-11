@@ -110,3 +110,7 @@ Activate: `/n/home11/xiaokangfu/.conda/envs/geo/bin/python`
 - **Spatial join output format**: Each input file generates 51 output files (one per state), e.g., `2020_10_01_00-tl_2020_06_tabblock20.parquet`
 - **Projection**: Use EPSG:5070 (NAD83/Conus Albers) for continental US visualizations; spatial joins use EPSG:4326 (WGS84)
 - remember only create/edit the files under this very current folder.
+- I am using geo conda env to work
+- I am using snakemake to connect the pipline
+- please check and keep update the Snakefile and data-pipeline-flowchart.txt if needed after you change anything
+- all the script should named starting with number to show the step order of the script
