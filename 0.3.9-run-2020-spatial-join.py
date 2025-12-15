@@ -73,6 +73,7 @@ CREATE OR REPLACE TABLE tweets AS
     CAST(latitude AS DOUBLE) as latitude,
     CAST(longitude AS DOUBLE) as longitude,
     score as sentiment,
+    user_id,
     date,
     CASE
         WHEN GPS IS NULL THEN false
@@ -95,6 +96,7 @@ CREATE OR REPLACE TABLE tweets_with_blocks AS
     t.latitude,
     t.longitude,
     t.sentiment,
+    t.user_id,
     t.date,
     t.GPS,
     t.spatialerror,
