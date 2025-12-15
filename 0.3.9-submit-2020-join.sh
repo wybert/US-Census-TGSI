@@ -5,7 +5,7 @@
 #SBATCH --partition=sapphire
 #SBATCH --nodes=1
 #SBATCH -t 24:00:00
-#SBATCH --mem=500G
+#SBATCH --mem=900G
 #SBATCH -c 110
 
 # Create logs directory if it doesn't exist

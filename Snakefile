@@ -81,6 +81,14 @@ rule correlation_only:
     input:
         "outputs/correlation/places_correlation_summary.csv"
 
+rule spatial_join_all:
+    """
+    Run spatial join for all years (parallelized by year)
+    """
+    input:
+        expand(config['tweets_with_census_blocks_confidence'] + "/{year}/.spatial_join_confidence_complete",
+               year=YEARS)
+
 # ========== Data Acquisition ==========
 
 rule download_census_data:
@@ -160,43 +168,25 @@ rule merge_tweets_sentiment:
 rule spatial_join:
     """
     Spatial join between tweets and census blocks with confidence weighting
-
-    This script adds:
-    - GPS field preservation (for high-quality subset analysis)
-    - Confidence scores (based on spatialerror vs block size)
-
-    Output includes both GPS flag and confidence field for flexible post-processing:
-    - GPS high-quality analysis: df[df['GPS'] == True]
-    - Weighted analysis: use confidence field
-    - Threshold filtering: df[df['confidence'] >= threshold]
-
-    Output directory: tweets_with_census_blocks_confidence (separate from old output)
-
-    Command-line arguments:
-    - Full mode (default): processes all years 2010-2023
-    - Test mode: use --year 2010 to test with just 2010 data
-    - Dry-run mode: use --dry-run to verify inputs without processing
-
-    To test: python 0.3.3-spatial-join-with-confidence.py --year 2010 --dry-run
     """
     input:
-        script="0.3.3-spatial-join-with-confidence.py",
+        script="0.3.9-run-2020-spatial-join.py",
         tweets_flag=config['geotweets_with_sentiment'] + "/.merge_complete",
-        census=expand(config['census_data_2020'] + "/tl_2020_{state}_tabblock20.zip",
-                     state=STATES),
+        census=config['census_data_2020'] + "/us_census_blocks_2020.geoparquet", # Merged census data
         config="setting.json"
     output:
-        flag=config['tweets_with_census_blocks_confidence'] + "/.spatial_join_confidence_complete"
+        # Per-year flag file to track completion
+        flag=config['tweets_with_census_blocks_confidence'] + "/{year}/.spatial_join_confidence_complete"
     log:
-        "outputs/logs/spatial_join_confidence.log"
+        "outputs/logs/spatial_join_confidence_{year}.log"
     resources:
-        cpus=110,
+        cpus=100,
         mem_mb=900000,
-        time="3-00:00:00",
+        time="24:00:00", # Reduced time since it's only one year per job
         partition="sapphire"
     shell:
         """
-        python {input.script} --start-year 2010 --end-year 2023 > {log} 2>&1
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} --start-year {wildcards.year} --end-year {wildcards.year} > {log} 2>&1
         touch {output.flag}
         """
 

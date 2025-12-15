@@ -5,16 +5,35 @@ Based on logic from 0.3.8-test-spatial-join-example.sql.
 """
 
 import os
+import glob
+import json
+import argparse
 import subprocess
 import time
-from datetime import datetime
+
+# Parse arguments
+parser = argparse.ArgumentParser(description='Batch spatial join using DuckDB')
+parser.add_argument('--start-year', type=int, default=2010, help='Start year')
+parser.add_argument('--end-year', type=int, default=2023, help='End year')
+parser.add_argument('--dry-run', action='store_true', help='Verify setup only')
+args = parser.parse_args()
+
+# Load configuration
+with open('setting.json') as f:
+    config = json.load(f)
 
 # Configuration
-YEAR = 2020
+# YEAR = 2020 # Removed hardcoded year
 MONTHS = range(1, 13) # 1 to 12
-BASE_INPUT_DIR = "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/data/geotweets_with_sentiment"
-BASE_OUTPUT_DIR = "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/data/tweets_with_census_blocks"
-CENSUS_FILE = "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/data/census_data_2020/us_census_blocks_2020.geoparquet"
+BASE_INPUT_DIR = config['geotweets_with_sentiment']
+BASE_OUTPUT_DIR = config['tweets_with_census_blocks_confidence']
+CENSUS_FILE = config['census_data_2020'] + "/us_census_blocks_2020.geoparquet"
+TEMP_DIR = config['workspace'] + "/tmp_duckdb"
+
+# Ensure temp dir exists
+os.makedirs(TEMP_DIR, exist_ok=True)
+# Get thread count from SLURM or default to 8
+threads = os.environ.get('SLURM_CPUS_PER_TASK', '8')
 
 # SQL Template
 SQL_TEMPLATE = """
@@ -22,8 +41,10 @@ SQL_TEMPLATE = """
 .timer on
 
 -- Configuration
-SET threads TO 8;
-SET memory_limit TO '64GB';
+SET threads TO {threads};
+SET memory_limit TO '800GB';
+-- Use a large temporary directory for spilling to disk
+SET temp_directory TO '{temp_dir}';
 
 INSTALL spatial;
 LOAD spatial;
@@ -110,22 +131,24 @@ SELECT 'Done.';
 """
 
 def process_month(year, month):
+    import glob
+
     month_str = f"{month:02d}"
     print(f"\n{'='*60}")
     print(f"Processing {year}-{month_str}")
     print(f"{'='*60}")
 
     # Define paths
-    input_pattern = os.path.join(BASE_INPUT_DIR, str(year), f"{year}_{month_str}_*.parquet")
+    # Input files use single digit for months 1-9 (e.g., 2020_1_...)
+    input_pattern = os.path.join(BASE_INPUT_DIR, str(year), f"{year}_{month}_*.parquet")
     
-    # Verify input exists
-    # Note: wildcard check in python requires glob, but we can trust duckdb or check manually.
-    # We'll just check if directory exists.
-    input_dir = os.path.dirname(input_pattern)
-    if not os.path.exists(input_dir):
-        print(f"Skipping: Input directory not found: {input_dir}")
+    # Check if any files match the pattern using glob
+    matched_files = glob.glob(input_pattern)
+    if not matched_files:
+        print(f"Skipping {year}-{month_str}: No files found matching pattern '{input_pattern}'")
         return
-
+    
+    # Output file uses zero-padded month (e.g., 2020_01.parquet)
     output_dir = os.path.join(BASE_OUTPUT_DIR, str(year))
     os.makedirs(output_dir, exist_ok=True)
     output_file = os.path.join(output_dir, f"{year}_{month_str}.parquet")
@@ -142,7 +165,9 @@ def process_month(year, month):
         input_pattern=input_pattern,
         output_file=output_file,
         year=year,
-        month=month_str
+        month=month_str,
+        temp_dir=TEMP_DIR,
+        threads=threads
     )
 
     # Write temp SQL file
@@ -169,13 +194,20 @@ def process_month(year, month):
             os.remove(temp_sql_path)
 
 def main():
-    print(f"Starting batch processing for Year {YEAR}")
+    print(f"Starting spatial join batch processing: {args.start_year}-{args.end_year}")
+    print(f"Temp Directory: {TEMP_DIR}")
+    
     start_total = time.time()
     
-    for month in MONTHS:
-        process_month(YEAR, month)
-        
+    years = range(args.start_year, args.end_year + 1)
+    months = range(1, 13)
+
+    for year in years:
+        for month in months:
+            process_month(year, month)
+            
     print(f"\nAll tasks finished in {time.time() - start_total:.2f} seconds")
 
 if __name__ == "__main__":
     main()
+
