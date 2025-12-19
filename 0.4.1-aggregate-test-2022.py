@@ -32,26 +32,28 @@ def get_aggregation_exprs(prefix="", include_weighted=False):
     exprs = [
         pl.len().alias(f"{prefix}tweet_count"),
         pl.col("user_id").n_unique().alias(f"{prefix}user_count"),
-        pl.col("score").mean().alias(f"{prefix}score_mean"),
-        pl.col("score").std().alias(f"{prefix}score_std"),
-        pl.col("score").min().alias(f"{prefix}score_min"),
-        pl.col("score").max().alias(f"{prefix}score_max"),
         
-        # Quantiles
-        pl.col("score").quantile(0.10).alias(f"{prefix}score_10q"),
-        pl.col("score").quantile(0.25).alias(f"{prefix}score_25q"),
-        pl.col("score").median().alias(f"{prefix}score_50q"),
-        pl.col("score").quantile(0.75).alias(f"{prefix}score_75q"),
-        pl.col("score").quantile(0.90).alias(f"{prefix}score_90q"),
+        # Sentiment Statistics (Raw)
+        pl.col("sentiment").mean().alias(f"{prefix}sentiment_mean"),
+        pl.col("sentiment").std().alias(f"{prefix}sentiment_std"),
+        pl.col("sentiment").min().alias(f"{prefix}sentiment_min"),
+        pl.col("sentiment").max().alias(f"{prefix}sentiment_max"),
+        
+        # Sentiment Quantiles
+        pl.col("sentiment").quantile(0.10).alias(f"{prefix}sentiment_10q"),
+        pl.col("sentiment").quantile(0.25).alias(f"{prefix}sentiment_25q"),
+        pl.col("sentiment").median().alias(f"{prefix}sentiment_50q"),
+        pl.col("sentiment").quantile(0.75).alias(f"{prefix}sentiment_75q"),
+        pl.col("sentiment").quantile(0.90).alias(f"{prefix}sentiment_90q"),
         
         # Confidence Stats
         pl.col("confidence").mean().alias(f"{prefix}confidence_mean")
     ]
     
     if include_weighted:
-        # Weighted Mean = Sum(Score * Conf) / Sum(Conf)
-        weighted_mean = (pl.col("score") * pl.col("confidence")).sum() / pl.col("confidence").sum()
-        exprs.append(weighted_mean.alias(f"{prefix}weighted_score_mean"))
+        # Weighted Mean = Sum(Sentiment * Conf) / Sum(Conf)
+        weighted_mean = (pl.col("sentiment") * pl.col("confidence")).sum() / pl.col("confidence").sum()
+        exprs.append(weighted_mean.alias(f"{prefix}weighted_sentiment_mean"))
         
     return exprs
 
@@ -126,9 +128,11 @@ def main():
     
     q = pl.scan_parquet(files)
     
-    # Ensure Date parsing
+    # Ensure Date parsing and cast types
     q = q.with_columns([
         pl.col("date").str.to_datetime().alias("datetime_val"), # Convert string to datetime
+        pl.col("confidence").cast(pl.Float64), # Cast confidence to Float64 for stats
+        pl.col("sentiment").cast(pl.Float64)   # Ensure sentiment is also Float64
     ])
     q = q.with_columns([
         pl.col("datetime_val").dt.year().alias("year"),
