@@ -2,7 +2,6 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{lineno}
-\usepackage{natbib}
 \linenumbers
 
 \title{Twitter Sentiment Geographical Index Dataset For US in Census Level}
@@ -35,9 +34,9 @@ Understanding subjective well-being (SWB) at fine geographic scales is increasin
 \section*{Background \& Summary}
 
 
-Subjective Well-Being (SWB), encompassing cognitive life evaluations and affective emotional states \citep{dienerSubjectiveWellbeing1984}, remains a critical focus for researchers and policymakers seeking measures beyond traditional economic indicators \citep{jaidkaEstimatingGeographicSubjective2020,deatonIncomeHealthWellbeing2008}. While surveys like the Gallup World Poll \citep{deatonIncomeHealthWellbeing2008} or national panels (e.g., PSID \citep{lucasMeasuringExperientialWellbeing2019}) provide valuable SWB data, they often face limitations in temporal frequency, geographic granularity, and cost \citep{chaiTwitterSentimentGeographical2023a}, particularly for tracking rapid changes or localized phenomena.
+Subjective Well-Being (SWB), encompassing cognitive life evaluations and affective emotional states \cite{dienerSubjectiveWellbeing1984}, remains a critical focus for researchers and policymakers seeking measures beyond traditional economic indicators \cite{jaidkaEstimatingGeographicSubjective2020,deatonIncomeHealthWellbeing2008}. While surveys like the Gallup World Poll \cite{deatonIncomeHealthWellbeing2008} or national panels (e.g., PSID \cite{lucasMeasuringExperientialWellbeing2019}) provide valuable SWB data, they often face limitations in temporal frequency, geographic granularity, and cost \cite{chaiTwitterSentimentGeographical2023a}, particularly for tracking rapid changes or localized phenomena.
 
-The proliferation of social media, combined with advances in Natural Language Processing (NLP), offers a complementary approach \citep{chaiTwitterSentimentGeographical2023a}. Platforms like Twitter capture real-time expressions of public mood, attitude, and feeling. Sentiment analysis techniques allow for the quantification of these expressions \citep{chaiTwitterSentimentGeographical2023a}, and studies have shown correlations between social media sentiment and survey-based SWB measures \citep{jaidkaEstimatingGeographicSubjective2020}. Previous work, including our own Twitter Sentiment Geographical Index (TSGI) \citep{chaiTwitterSentimentGeographical2023a}, demonstrated the feasibility of creating large-scale, multi-lingual sentiment indices at the country and admin-2 (county/city) levels using billions of geotagged tweets \citep{chaiTwitterSentimentGeographical2023a}. These indices have proven useful for different studies ranging from analyzing the sentiment impacts of major events like the COVID-19 pandemic \citep{wangGlobalEvidenceExpressed2022} and the complex spatial relationships between urban sprawl and SWB \citep{wangUrbanSprawlSubjective2025}, to rural–urban differences among social media users \citep{jiangRuralurbanDifferencesDeterminants2025} and global sentiment variations on decentralized finance linked to GDP per capita \citep{chenGlobalPublicSentiment2025}.
+The proliferation of social media, combined with advances in Natural Language Processing (NLP), offers a complementary approach \cite{chaiTwitterSentimentGeographical2023a}. Platforms like Twitter capture real-time expressions of public mood, attitude, and feeling. Sentiment analysis techniques allow for the quantification of these expressions \cite{chaiTwitterSentimentGeographical2023a}, and studies have shown correlations between social media sentiment and survey-based SWB measures \cite{jaidkaEstimatingGeographicSubjective2020}. Previous work, including our own Twitter Sentiment Geographical Index (TSGI) \cite{chaiTwitterSentimentGeographical2023a}, demonstrated the feasibility of creating large-scale, multi-lingual sentiment indices at the country and admin-2 (county/city) levels using billions of geotagged tweets \cite{chaiTwitterSentimentGeographical2023a}. These indices have proven useful for different studies ranging from analyzing the sentiment impacts of major events like the COVID-19 pandemic \cite{wangGlobalEvidenceExpressed2022} and the complex spatial relationships between urban sprawl and SWB \cite{wangUrbanSprawlSubjective2025}, to rural–urban differences among social media users \cite{jiangRuralurbanDifferencesDeterminants2025} and global sentiment variations on decentralized finance linked to GDP per capita \cite{chenGlobalPublicSentiment2025}.
 
 However, many social, economic, and policy dynamics occur at much finer geographic scales within countries, particularly within diverse nations like the United States. County-level aggregation can mask significant intra-county heterogeneity. To address this, we develop a new, publicly available Twitter sentiment index aggregated at the US census tract level. Census tracts are designed to be relatively homogeneous units with respect to population characteristics, economic status, and living conditions, making them a highly relevant scale for local analysis. This US Census Tract Twitter Sentiment Geographical Index (US-CT-TSGI) utilizes the same core sentiment analysis methodology as the global TSGI but applies a more granular geocoding process specific to the US administrative boundaries. This dataset provides researchers with a powerful tool to investigate neighborhood-level variations in expressed sentiment and explore their connections to local events, demographic characteristics, environmental factors, and policy interventions.
 
@@ -46,7 +45,7 @@ Our primary contribution is the creation of the first open-source, daily, monthl
 \begin{enumerate}
     \item High Granularity: Sentiment data resolved at the census tract level.
     \item Temporal Frequency: Daily updates enabling the analysis of short-term fluctuations
-    \item Consistent Methodology: Built upon a validated BERT-based sentiment model \citep{chaiTwitterSentimentGeographical2023a}, ensuring methodological continuity with broader-scale indices.
+    \item Consistent Methodology: Built upon a validated BERT-based sentiment model \cite{chaiTwitterSentimentGeographical2023a}, ensuring methodological continuity with broader-scale indices.
 \end{enumerate}
 
 We anticipate this dataset will be a valuable resource for urban studies, public health, sociology, economics, and political science, enabling novel research into the micro-geographic patterns of expressed sentiment and well-being in the United States.
@@ -62,7 +61,7 @@ We anticipate this dataset will be a valuable resource for urban studies, public
 \subsection*{Data Collection, Cleaning and Sentiment Enhancing}
 
 
-We apply the same Twitter data archive, preprocessing steps and sentiment analysis methods as detailed in our previous work \citep{chaiTwitterSentimentGeographical2023a} to ensure data quality and consistency with the sentiment model training. In addition, as we focus on the US, we utilized tweets identified as originating within the United States from XX, to XX, encompassing approximately XX billion geotagged tweets after initial filtering and cleaning.
+We apply the same Twitter data archive, preprocessing steps and sentiment analysis methods as detailed in our previous work \cite{chaiTwitterSentimentGeographical2023a} to ensure data quality and consistency with the sentiment model training. In addition, as we focus on the US, we utilized tweets identified as originating within the United States from XX, to XX, encompassing approximately XX billion geotagged tweets after initial filtering and cleaning.
 
 
 \subsection*{Aggregating Sentiment Scores}
@@ -139,7 +138,7 @@ The entire source code is open-source and publicly accessible on GitHub at \url{
 
 \bibliography{sample}
 
-\noindent LaTeX formats citations and references automatically using the bibliography records in your .bib file, which you can edit via the project menu. Use the cite command for an inline citation, e.g. \cite{Kaufman2020, Figueredo:2009dg, Babichev2002, behringer2014manipulating}. For data citations of datasets uploaded to e.g. \emph{figshare}, please use the \verb|howpublished| option in the bib entry to specify the platform and the link, as in the \verb|Hao:gidmaps:2014| example in the sample bibliography file. For journal articles, DOIs should be included for works in press that do not yet have volume or page numbers. For other journal articles, DOIs should be included uniformly for all articles or not at all. We recommend that you encode all DOIs in your bibtex database as full URLs, e.g. https://doi.org/10.1007/s12110-009-9068-2.
+
 
 \section*{Acknowledgements} (not compulsory)
 
