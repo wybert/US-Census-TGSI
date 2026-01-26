@@ -107,7 +107,7 @@ rule download_census_data:
         partition="shared"
     shell:
         """
-        python 0.1-download_cenus_data.py > {log} 2>&1
+        python src/01_data_acquisition/0.1-download_cenus_data.py > {log} 2>&1
         """
 
 # ========== Data Validation ==========
@@ -117,7 +117,7 @@ rule find_missing_sentiment:
     Find missing sentiment files before merging
     """
     input:
-        script="0.1.5-find-missing-sentiment-files.py",
+        script="src/01_data_acquisition/0.1.5-find-missing-sentiment-files.py",
         config="setting.json"
     output:
         missing=config['outputs_dir'] + "/missing_sentiment_files.csv",
@@ -144,7 +144,7 @@ rule merge_tweets_sentiment:
     Note: This is a long-running job that processes all years
     """
     input:
-        script="0.2.1-combine-geo-tweets-archive-and-sentiment.py",
+        script="src/02_merging/0.2.1-combine-geo-tweets-archive-and-sentiment.py",
         config="setting.json",
         validation=config['outputs_dir'] + "/missing_sentiment_summary.txt"
     output:
@@ -170,7 +170,7 @@ rule spatial_join:
     Spatial join between tweets and census blocks with confidence weighting
     """
     input:
-        script="0.3.9-run-2020-spatial-join.py",
+        script="src/03_spatial_join/0.3.9-run-2020-spatial-join.py",
         tweets_flag=config['geotweets_with_sentiment'] + "/.merge_complete",
         census=config['census_data_2020'] + "/us_census_blocks_2020.geoparquet", # Merged census data
         config="setting.json"
@@ -197,7 +197,7 @@ rule aggregate_tweet_counts:
     Aggregate tweet counts by GEOID20 and merge with population data
     """
     input:
-        script="0.4.1-duckdb-validate-merge-data.sql",
+        script="src/04_validation/0.4.1-duckdb-validate-merge-data.sql",
         config="setting.json"
     output:
         config['workspace'] + "/data/all_years_tweet_count.parquet",
@@ -219,7 +219,7 @@ rule calculate_coverage_ratio:
     Calculate Coverage Ratio (CR) and log2CR metrics
     """
     input:
-        script="0.4.2-duckdb-validate-CR.sql",
+        script="src/04_validation/0.4.2-duckdb-validate-CR.sql",
         data=config['workspace'] + "/data/all_years_tweet_count_with_pop.parquet",
         config="setting.json"
     output:
@@ -244,7 +244,7 @@ rule spatial_representation:
     Merge census geometry with CR data for spatial visualization
     """
     input:
-        script="0.4.3-validation-spatial-representation.py",
+        script="src/04_validation/0.4.3-validation-spatial-representation.py",
         cr_data=config['workspace'] + "/data/all_years_tweet_count_with_pop_CR.parquet",
         config="setting.json"
     output:
@@ -266,7 +266,7 @@ rule validation_histogram:
     Generate log2CR histogram and map visualizations
     """
     input:
-        script="0.4.4-validation-hist.py",
+        script="src/04_validation/0.4.4-validation-hist.py",
         geo_data=config['workspace'] + "/data/census_tracts_merged_shifted_geo.parquet",
         config="setting.json"
     output:
@@ -288,7 +288,7 @@ rule validation_classification:
     Generate classified log2CR map with custom bins
     """
     input:
-        script="0.4.5-validation-vis3-classify-customized.py",
+        script="src/04_validation/0.4.5-validation-vis3-classify-customized.py",
         geo_data=config['workspace'] + "/data/census_tracts_merged_shifted_geo.parquet",
         config="setting.json"
     output:
@@ -310,7 +310,7 @@ rule gini_analysis:
     Compute Gini coefficient and Lorenz curve
     """
     input:
-        script="0.4.7-validation-gini-lorenz.py",
+        script="src/04_validation/0.4.7-validation-gini-lorenz.py",
         cr_data=config['workspace'] + "/data/all_years_tweet_count_with_pop_CR.parquet",
         config="setting.json"
     output:
@@ -336,7 +336,7 @@ rule aggregate_to_tract_level:
     Aggregate block-level data to tract-level and join with PLACES data
     """
     input:
-        script="0.6.1-agg-to-track-level-interactive.sql",
+        script="src/04_validation/0.6.1-agg-to-track-level-interactive.sql",
         config="setting.json"
     output:
         config['workspace'] + "/data/sentiment_places_data_joined.parquet"
@@ -359,7 +359,7 @@ rule correlation_analysis:
     Compute correlations between sentiment and PLACES health indicators
     """
     input:
-        script="0.6-cor-with-places-500-data-sentiment.py",
+        script="src/04_validation/0.6-cor-with-places-500-data-sentiment.py",
         data=config['workspace'] + "/data/sentiment_places_data_joined.parquet",
         config="setting.json"
     output:
@@ -383,7 +383,7 @@ rule correlation_plots:
     Generate enhanced correlation plots with LOWESS smoothing
     """
     input:
-        script="0.6.2-cor-p-value-and-plot.py",
+        script="src/04_validation/0.6.2-cor-p-value-and-plot.py",
         data=config['workspace'] + "/data/sentiment_places_data_joined.parquet",
         config="setting.json"
     output:

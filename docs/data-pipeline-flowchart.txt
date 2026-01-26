@@ -7,6 +7,7 @@
 └─────────────────────────────────────────────────────────────────────────────┘
 
     ┌──────────────────────┐
+    │  src/01_data_acquisition/
     │  0.1 数据下载         │
     │  Download Census     │
     │  TIGER/Line          │
@@ -30,6 +31,7 @@
 │  Tweets Archive      │         │  Scores Directory    │
 └──────────┬───────────┘         └──────────┬───────────┘
            │                                │
+           │   src/01_data_acquisition/
            │   0.1.5 Find Missing Script    │
            │   Check file correspondence    │
            └────────────┬───────────────────┘
@@ -48,6 +50,7 @@
                         │ If missing files found
                         ▼
            ┌────────────────────────┐
+           │  src/01_data_acquisition/
            │  0.1.6-0.1.8 Scripts   │
            │  Recompute Missing     │
            │  Sentiment Files       │
@@ -82,6 +85,7 @@
 │  ~TB scale           │         │  Per-file            │
 └──────────┬───────────┘         └──────────┬───────────┘
            │                                │
+           │         src/02_merging/        │
            │         0.2-0.3 Scripts        │
            │      (pandarallel merge)       │
            │      ⚠️ Validated inputs       │
@@ -115,6 +119,7 @@
 │   + spatialerror)    │         │                      │
 └──────────┬───────────┘         └──────────┬───────────┘
            │                                │
+           │    src/03_spatial_join/        │
            │    0.3.3 Spatial Join Script   │
            │    (with Confidence Weighting) │
            │    Point-in-Polygon            │
@@ -150,6 +155,7 @@
 │  GEOID20             │         │  Data (parquet)      │
 └──────────┬───────────┘         └──────────┬───────────┘
            │                                │
+           │    src/04_validation/          │
            │    0.6.1 DuckDB Aggregation    │
            │    Block → Tract level         │
            └────────────┬───────────────────┘
@@ -182,6 +188,7 @@
            │                                 │
            ▼                                 ▼
 ┌──────────────────────┐         ┌──────────────────────┐
+│  src/04_validation/  │         │  src/04_validation/  │
 │  0.4.x Scripts       │         │  0.4.7 Gini &        │
 │  • DuckDB validation │         │  Lorenz Curves       │
 │  • Choropleth maps   │         │  (Representativeness)│
@@ -200,6 +207,7 @@
 │   tweet counts)      │         │   CrudePrev)         │
 └──────────┬───────────┘         └──────────┬───────────┘
            │                                │
+           │    src/04_validation/          │
            │    0.6.x Correlation Scripts   │
            │    (Spearman/Pearson)          │
            │    Weighted & Unweighted       │
@@ -250,7 +258,7 @@ Population Weighting = 使用人口加权计算tract级别的平均情感
                             配置文件 (Configuration)
 ================================================================================
 
-所有数据路径在 setting.yaml 中定义：
+所有数据路径在 setting.json 中定义：
   • geo_tweets_archive_base_path: 原始推文
   • sentiment_file_base_path: 情感分数
   • workspace: 工作目录
