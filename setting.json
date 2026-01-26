@@ -12,5 +12,6 @@
   "census_data_2020": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/data/census_data_2020",
   "sentiment_by_tract": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/sentiment_by_tract",
   "outputs_dir": "/n/home11/xiaokangfu/xiaokang/US-Census-TGSI/outputs",
-  "sentiment_computing_path": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/sentiment_computing_path"
+  "sentiment_computing_path": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/sentiment_computing_path",
+  "aggregated_sentiment_output": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/data/aggregated_sentiment_stats"
 }

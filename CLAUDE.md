@@ -40,7 +40,9 @@ The project uses **Snakemake** for orchestration on a SLURM cluster.
 
 ## Development Status
 - **Current Task:** Consolidating paper draft with codebase and validating pipeline execution.
-- **Primary Data Product:** The dataset to be published is the **post-spatial-join archive**, which enriches ~2 billion tweets with 15-digit Census Block IDs (`GEOID20`).
+- **Primary Data Product:** The final dataset for publication is the **Aggregated Sentiment Statistics** (Daily/Monthly/Yearly) at the Census Tract level.
+    - **Path:** `/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/data/aggregated_sentiment_stats`
+    - **Format:** Parquet files (e.g., `daily_2022.parquet`, `monthly_2022.parquet`, `yearly_2022.parquet`)
 - **Paper Repo:** Merged from `wybert/US-census-TGSI-paper` into `paper/`.
 
 

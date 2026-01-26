@@ -162,14 +162,17 @@
                         │ Population-weighted
                         ▼
            ┌────────────────────────┐
-           │  Tract-level           │
-           │  Aggregated Data       │
+           │  FINAL DATA PRODUCT    │
+           │  Aggregated Sentiment  │
+           │  Stats (Parquet)       │
            │                        │
-           │  Metrics:              │
-           │  • Tweet counts        │
-           │  • Avg sentiment       │
-           │  • CR (Coverage Ratio) │
-           │  • log2(CR)            │
+           │  Path: data/aggregated_│
+           │        sentiment_stats │
+           │                        │
+           │  Files:                │
+           │  • daily_YYYY.parquet  │
+           │  • monthly_YYYY.parquet│
+           │  • yearly_YYYY.parquet │
            └────────────┬───────────┘
                         │
                         │
