@@ -24,7 +24,11 @@ The project uses **Snakemake** for orchestration on a SLURM cluster.
     - `01_data_acquisition/`
     - `02_merging/`
     - `03_spatial_join/`
-    - `04_validation/` (Includes validation and correlation analysis scripts)
+    - `04_validation/`
+        - `aggregation/`: Block/Tract aggregation logic
+        - `representativeness/`: CR, Gini, Maps
+        - `correlation/`: Health data correlation
+        - `utils/`: Testing and helper scripts
 - `scripts/`: Helper and submission scripts.
 - `config/`: Configuration files (env, json).
 - `docs/`: Documentation (Pipeline, setup, logs).
@@ -65,7 +69,7 @@ sbatch src/03_spatial_join/0.3.2-run-spatial-join.sh
 
 ### DuckDB Interactive Analysis
 ```bash
-duckdb -init src/04_validation/0.6.1-agg-to-track-level-interactive.sql
+duckdb -init src/04_validation/aggregation/0.6.1-agg-to-track-level-interactive.sql
 ```
 For non-interactive execution, use `.read` or `-c` flag with individual SQL files.
 
