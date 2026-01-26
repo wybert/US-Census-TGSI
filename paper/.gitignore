@@ -1,0 +1,46 @@
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.brf
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.nav
+*.out
+*.run.xml
+*.snm
+*.synctex.gz
+*.toc
+*.xdv
+
+# Intermediate/build outputs
+*.dvi
+*.pdf
+*.ps
+
+# Editor/OS
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Latexmk
+latexmkrc
+
+# Biber
+*.bbl
+*.bcf
+
+# Minted
+_minted*
+
+# Latexindent
+*.bak
+
+# IDEs
+.vscode/
+.idea/

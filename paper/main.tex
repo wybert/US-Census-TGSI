@@ -1,0 +1,265 @@
+\documentclass[fleqn,10pt]{wlscirep}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lineno}
+\usepackage{natbib}
+\linenumbers
+
+\title{Twitter Sentiment Geographical Index Dataset For US in Census Level}
+
+\author[1,2,*]{Xiaokang Fu}
+\author[1]{Devika Jain}
+\author[1]{Jack Hayes}
+\affil[1]{Center for Geographic Analysis, Harvard University, 1737 Cambridge Street, Cambridge, 02138, US}
+\affil[2]{State Key Laboratory of Information Engineering in Surveying, Mapping and Remote Sensing, Wuhan University, 129 Luoyu Road, Wuhan, 430079, China}
+
+\affil[*]{corresponding author: Xiaokang Fu (xiaokang\_fu@fas.harvard.edu)}
+
+% \affil[$\dag$]{these authors contributed equally to this work}
+
+
+\begin{abstract}
+
+Understanding subjective well-being (SWB) at fine geographic scales is increasingly important for policy-making and social science research. Building upon established methodologies for deriving sentiment from social media, we introduce a high-resolution Twitter Sentiment Index specifically for the United States at the census tract level. This dataset leverages deep-learning-based natural language processing techniques applied to a large corpus of geotagged tweets originating from the US from 2010 to 2023. The resulting open-source dataset provides daily, monthly, and yearly sentiment scores and tweet counts aggregated to 8.18 million US census tracts, offering unprecedented granularity for examining local variations in expressed sentiment and their potential SWB implications. This resource complements traditional survey methods by providing timely, high-frequency data suitable for studying the impacts of local events, policies, and socioeconomic conditions on public mood.
+
+\end{abstract}
+\begin{document}
+
+\flushbottom
+\maketitle
+
+% \thispagestyle{empty}
+
+% \noindent Please note: Abbreviations should be introduced at the first mention in the main text – no abbreviations lists or tables should be included. Structure of the main text is provided below.
+
+\section*{Background \& Summary}
+
+
+Subjective Well-Being (SWB), encompassing cognitive life evaluations and affective emotional states \citep{dienerSubjectiveWellbeing1984}, remains a critical focus for researchers and policymakers seeking measures beyond traditional economic indicators \citep{jaidkaEstimatingGeographicSubjective2020,deatonIncomeHealthWellbeing2008}. While surveys like the Gallup World Poll \citep{deatonIncomeHealthWellbeing2008} or national panels (e.g., PSID \citep{lucasMeasuringExperientialWellbeing2019}) provide valuable SWB data, they often face limitations in temporal frequency, geographic granularity, and cost \citep{chaiTwitterSentimentGeographical2023a}, particularly for tracking rapid changes or localized phenomena.
+
+The proliferation of social media, combined with advances in Natural Language Processing (NLP), offers a complementary approach \citep{chaiTwitterSentimentGeographical2023a}. Platforms like Twitter capture real-time expressions of public mood, attitude, and feeling. Sentiment analysis techniques allow for the quantification of these expressions \citep{chaiTwitterSentimentGeographical2023a}, and studies have shown correlations between social media sentiment and survey-based SWB measures \citep{jaidkaEstimatingGeographicSubjective2020}. Previous work, including our own Twitter Sentiment Geographical Index (TSGI) \citep{chaiTwitterSentimentGeographical2023a}, demonstrated the feasibility of creating large-scale, multi-lingual sentiment indices at the country and admin-2 (county/city) levels using billions of geotagged tweets \citep{chaiTwitterSentimentGeographical2023a}. These indices have proven useful for different studies ranging from analyzing the sentiment impacts of major events like the COVID-19 pandemic \citep{wangGlobalEvidenceExpressed2022} and the complex spatial relationships between urban sprawl and SWB \citep{wangUrbanSprawlSubjective2025}, to rural–urban differences among social media users \citep{jiangRuralurbanDifferencesDeterminants2025} and global sentiment variations on decentralized finance linked to GDP per capita \citep{chenGlobalPublicSentiment2025}.
+
+However, many social, economic, and policy dynamics occur at much finer geographic scales within countries, particularly within diverse nations like the United States. County-level aggregation can mask significant intra-county heterogeneity. To address this, we develop a new, publicly available Twitter sentiment index aggregated at the US census tract level. Census tracts are designed to be relatively homogeneous units with respect to population characteristics, economic status, and living conditions, making them a highly relevant scale for local analysis. This US Census Tract Twitter Sentiment Geographical Index (US-CT-TSGI) utilizes the same core sentiment analysis methodology as the global TSGI but applies a more granular geocoding process specific to the US administrative boundaries. This dataset provides researchers with a powerful tool to investigate neighborhood-level variations in expressed sentiment and explore their connections to local events, demographic characteristics, environmental factors, and policy interventions.
+
+Our primary contribution is the creation of the first open-source, daily, monthly and yearly Twitter sentiment database at the US census tract level, covering  8.18 million tracts across the nation from 2010 to 2023. This dataset offers:
+
+\begin{enumerate}
+    \item High Granularity: Sentiment data resolved at the census tract level.
+    \item Temporal Frequency: Daily updates enabling the analysis of short-term fluctuations
+    \item Consistent Methodology: Built upon a validated BERT-based sentiment model \citep{chaiTwitterSentimentGeographical2023a}, ensuring methodological continuity with broader-scale indices.
+\end{enumerate}
+
+We anticipate this dataset will be a valuable resource for urban studies, public health, sociology, economics, and political science, enabling novel research into the micro-geographic patterns of expressed sentiment and well-being in the United States.
+
+
+\section*{Methods}
+
+% Maybe still need add more details.
+% Add how we did it, but refer to previous work for more details
+% like what other papers will do; maybe I will add Zifu as the co Authors, and he will be the corespnding author maybe the last author?
+
+
+\subsection*{Data Collection, Cleaning and Sentiment Enhancing}
+
+
+We apply the same Twitter data archive, preprocessing steps and sentiment analysis methods as detailed in our previous work \citep{chaiTwitterSentimentGeographical2023a} to ensure data quality and consistency with the sentiment model training. In addition, as we focus on the US, we utilized tweets identified as originating within the United States from XX, to XX, encompassing approximately XX billion geotagged tweets after initial filtering and cleaning.
+
+
+\subsection*{Aggregating Sentiment Scores}
+
+To ensure accurate spatial sentiment analysis at the neighborhood level, tweets were first geolocated to U.S. census tracts using TIGER/Line boundary data and then aggregated over time to compute tract‑level sentiment indices. We obtained US Census Tract boundary data from the US Census Bureau's TIGER/Line Shapefiles for the 2020 vintage year (The valiables of the census data can be found in \ref{tab:census_block}). Tweet-level sentiment scores (ranging from 0 to 1) and counts were then aggregated to the census tract level (by their assigned census tract identifier (GEOID)) on a daily basis, monthly and yearly (by the time when the tweet was posted). These aggregated counts and scores metrics are the same as our previous work to keep consistent.  The spatial processing was performed using the GeoPandas library in Python on FASRC at Harvard.
+
+\section*{Data Records}
+
+% The Data Records section should be used to explain each data record associated with this work, including the repository where this information is stored, and to provide an overview of the data files and their formats. Each external data record should be cited numerically in the text of this section, for example \cite{Hao:gidmaps:2014}, and included in the main reference list as described below. A data citation should also be placed in the subsection of the Methods containing the data-collection or analytical procedure(s) used to derive the corresponding record. Providing a direct link to the dataset may also be helpful to readers (\hyperlink{https://doi.org/10.6084/m9.figshare.853801}{https://doi.org/10.6084/m9.figshare.853801}).
+
+% Tables should be used to support the data records, and should clearly indicate the samples and subjects (study inputs), their provenance, and the experimental manipulations performed on each (please see 'Tables' below). They should also specify the data output resulting from each data-collection or analytical step, should these form part of the archived record.
+
+
+% The Geotweets Archive data can be requested to access through \url{https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/3NCMB6}.
+% The US states, counties and census blocks can be found from \url{https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html}. The generated census enriched tweet IDs can be found from \url{https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/IAYJOC}.
+
+
+The US Census Tract Twitter Sentiment Geographical Index (US-CT-TSGI) can be accessed at \url{XXX} and all the variables can be seen in Table~\ref{tab:census_tgsi}.
+
+
+
+\section*{Technical Validation}
+
+% we need conduct a Technical Validation analysis
+% 正文可以不再大篇幅复现分类器性能，但仍应在 Technical Validation 里用 ≈1 段文字＋1 表格说明“模型已按 Xia et al. (2024) 验证，关键指标在本样本中保持一致”。这样既避免冗余，又满足 Scientific Data 对“验证可复现性”的审稿要求。常见做法是：
+% Spatial representativeness（核心）
+% 图 2：Census tract 推文密度 vs. 人口密度热图。
+
+% 3.1 覆盖度 (Coverage Ratio)	覆盖度似乎会比较小
+%
+%
+% 表 2：语言–族裔相关系数。
+% Need to compare the External convergence: Places data https://www.cdc.gov/places/index.html
+% https://data.cdc.gov/500-Cities-Places/PLACES-Census-Tract-Data-GIS-Friendly-Format-2024-/yjkw-uj5s/about_data
+% This is the 2022 data
+% follow this url https://data.cdc.gov/browse?category=500+Cities+%26+Places&sortBy=relevance&pageSize=100
+
+% and filter by PLACES: Census Tract Data, you will get 5 years/items, 所以一共是五年。
+%
+% 选 2023 Maui Wildfire 等事件区，与相邻未灾区 tract 做 DiD，看情感与 FMD 偏差是否放大。
+% 这看起来有一些工作：论文中需要哪些图
+
+% url lists:
+% https://data.cdc.gov/500-Cities-Places/PLACES-Census-Tract-Data-GIS-Friendly-Format-2024-/yjkw-uj5s/about_data
+% https://data.cdc.gov/500-Cities-Places/PLACES-Census-Tract-Data-GIS-Friendly-Format-2023-/hky2-3tpn/about_data
+% https://data.cdc.gov/500-Cities-Places/PLACES-Census-Tract-Data-GIS-Friendly-Format-2022-/shc3-fzig/about_data
+% https://data.cdc.gov/500-Cities-Places/PLACES-Census-Tract-Data-GIS-Friendly-Format-2021-/mb5y-ytti/about_data
+% https://data.cdc.gov/500-Cities-Places/PLACES-Census-Tract-Data-GIS-Friendly-Format-2020-/ib3w-k9rq/about_data
+% 这些URL我需要什么数据？什么变量呢？怎么下载呢？应该在哪里安装呢？
+
+% 第一个覆盖其实仅仅需要结果的数据就可以了
+% 第二个其实需要计算spatial error的：需要每一年的么？也许不需要吧。其实
+% 第三个其实也是仅仅需要结果的数据就可以了。
+
+%
+This section presents any experiments or analyses that are needed to support the technical quality of the dataset. This section may be supported by figures and tables, as needed. This is a required section; authors must present information justifying the reliability of their data.
+
+\section*{Usage Notes}
+
+% The Usage Notes should contain brief instructions to assist other researchers with reuse of the data. This may include discussion of software packages that are suitable for analysing the assay data files, suggested downstream processing steps (e.g. normalization, etc.), or tips for integrating or comparing the data records with other datasets. Authors are encouraged to provide code, programs or data-processing workflows if they may help others understand or use the data. Please see our code availability policy for advice on supplying custom code alongside Data Descriptor manuscripts.
+
+% For studies involving privacy or safety controls on public access to the data, this section should describe in detail these controls, including how authors can apply to access the data, what criteria will be used to determine who may access the data, and any limitations on data use.
+
+Our efforts have resulted in the development of the most extensive archive comprising two billion tweets enriched with country, state, and census-level variables. It encompasses tweet and user identification records, along with census variables, encompassing over two billion geo-tagged tweets in the U.S. from January 2012 to July 2023. As far as our knowledge extends, this dataset marks the pioneering instance of a geography-enriched tweet collection accessible at such a scale and granularity. However, our dataset has some limitations and we recommend reading this section in detail before using this dataset.
+
+% list the limatations
+
+
+\section*{Code availability}
+
+% For all studies using custom code in the generation or processing of datasets, a statement must be included under the heading "Code availability", indicating whether and how the code can be accessed, including any restrictions to access. This section should also include information on the versions of any software used, if relevant, and any specific variables or parameters used to generate, test, or process the current dataset.
+
+The entire source code is open-source and publicly accessible on GitHub at \url{https://github.com/wybert/US-Census-TGSI}.
+
+\bibliography{sample}
+
+\noindent LaTeX formats citations and references automatically using the bibliography records in your .bib file, which you can edit via the project menu. Use the cite command for an inline citation, e.g. \cite{Kaufman2020, Figueredo:2009dg, Babichev2002, behringer2014manipulating}. For data citations of datasets uploaded to e.g. \emph{figshare}, please use the \verb|howpublished| option in the bib entry to specify the platform and the link, as in the \verb|Hao:gidmaps:2014| example in the sample bibliography file. For journal articles, DOIs should be included for works in press that do not yet have volume or page numbers. For other journal articles, DOIs should be included uniformly for all articles or not at all. We recommend that you encode all DOIs in your bibtex database as full URLs, e.g. https://doi.org/10.1007/s12110-009-9068-2.
+
+\section*{Acknowledgements} (not compulsory)
+
+% Acknowledgements should be brief, and should not include thanks to anonymous referees and editors, or effusive comments. Grant or contribution numbers may be acknowledged.
+
+We extend our gratitude to Department of Government  at Harvard University for partially funding this work. We would like to thank Harvard FAS Research Computing for providing the technical support and computing resources needed for the project. We would also like to thank Heavy.ai for providing us the software license to their product.
+
+
+\section*{Author contributions statement}
+
+Must include all authors, identified by initials, for example:
+A.A. conceived the experiment(s), A.A. and B.A. conducted the experiment(s), C.A. and D.A. analysed the results. All authors reviewed the manuscript.
+
+\section*{Competing interests} (mandatory statement)
+
+% The corresponding author is responsible for providing a \href{https://www.nature.com/sdata/policies/editorial-and-publishing-policies#competing}{competing interests statement} on behalf of all authors of the paper. This statement must be included in the submitted article file.
+
+All authors declare that they have no conflicts of interest. Authors used ChatGPT 4 in order to improve readability and language.
+
+
+\section*{Figures \& Tables}
+
+% Figures, tables, and their legends, should be included at the end of the document. Figures and tables can be referenced in \LaTeX{} using the ref command, e.g. Figure \ref{fig:stream} and Table \ref{tab:example}.
+
+% Authors are encouraged to provide one or more tables that provide basic information on the main ‘inputs’ to the study (e.g. samples, participants, or information sources) and the main data outputs of the study. Tables in the manuscript should generally not be used to present primary data (i.e. measurements). Tables containing primary data should be submitted to an appropriate data repository.
+
+% Tables may be provided within the \LaTeX{} document or as separate files (tab-delimited text or Excel files). Legends, where needed, should be included here. Generally, a Data Descriptor should have fewer than ten Tables, but more may be allowed when needed. Tables may be of any size, but only Tables which fit onto a single printed page will be included in the PDF version of the article (up to a maximum of three).
+
+% Due to typesetting constraints, tables that do not fit onto a single A4 page cannot be included in the PDF version of the article and will be made available in the online version only. Any such tables must be labelled in the text as ‘Online-only’ tables and numbered separately from the main table list e.g. ‘Table 1, Table 2, Online-only Table 1’ etc.
+
+% \begin{figure}[ht]
+% \centering
+% \includegraphics[width=\linewidth]{stream}
+% \caption{Legend (350 words max). Example legend text.}
+% \label{fig:stream}
+% \end{figure}
+
+% \begin{table}[ht]
+% \centering
+% \begin{tabular}{|l|l|l|}
+% \hline
+% Condition & n & p \\
+% \hline
+% A & 5 & 0.1 \\
+% \hline
+% B & 10 & 0.01 \\
+% \hline
+% \end{tabular}
+% \caption{\label{tab:example}Legend (350 words max). Example legend text.}
+% \end{table}
+
+% \begin{figure}[ht]
+%     \centering
+%     \includegraphics[scale=0.6]{figures/method.drawio.pdf}
+%     \caption{Workflow to merge the geotagged tweets with administrative boundaries.}
+%     \label{fig:method}
+% \end{figure}
+
+% \begin{figure}[ht]
+%     \centering
+%     \includegraphics[scale=0.15]{figures/tweets_north_arrow.png}
+%     \caption{Spatial distribution of the Geotweets from Jan 1, 2023 to Feb 28, 2023, generated by using Heavy Immerse.}
+%     \label{fig:tweets_distribution}
+% \end{figure}
+
+% \begin{figure}[ht]
+%     \centering
+%     \includegraphics[scale=0.15]{figures/us_county_north.png}
+%     \caption{US County Boundaries.}
+%     \label{fig:us_boundaries}
+% \end{figure}
+
+% FIXME: FIX the table here
+\begin{table}[htbp]
+\centering
+\caption{Geotweet Census Archive}
+\label{tab:census_tgsi}
+\begin{tabular}{llp{8cm}}
+\toprule
+\textbf{Entry} & \textbf{Variable} & \textbf{Description} \\
+\midrule
+1 & message\_id & Tweet ID \\
+2 & user\_id & User ID number \\
+3 & fips & County FIPS code \\
+4 & county & County name \\
+5 & state & State abbreviation \\
+6 & GEOID20 & Census block GEOID \\
+7 & sentiment\_score & Sentiment score (0--1) calculated using BERT model \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\begin{table}[htbp]
+\centering
+\caption{Census Block Variables}
+\label{tab:census_block}
+\begin{tabular}{llp{8cm}}
+\toprule
+\textbf{Entry} & \textbf{Variable} & \textbf{Description} \\
+\midrule
+1 & STATEFP20 & 2020 Census state FIPS code \\
+2 & COUNTYFP20 & 2020 Census county FIPS code \\
+3 & TRACTCE20 & 2020 Census tract code \\
+4 & BLOCKCE20 & 2020 Census tabulation block number \\
+5 & GEOID20 & Census block identifier; a concatenation of 2020 Census state FIPS code, 2020 Census county FIPS code, 2020 Census tract code, and 2020 Census block number \\
+6 & GEOIDFQ20 & 2020 Fully Qualified GEOID \\
+7 & NAME20 & 2020 Census tabulation block name; a concatenation of ‘Block’ and the tabulation block number \\
+8 & MTFCC20 & MAF/TIGER Feature Class Code (G5040) \\
+9 & UR20 & Reserved for 2020 Census urban/rural indicator (2020 Urban Areas are not yet defined) \\
+10 & UACE20 & Reserved for 2020 Census urban area code (2020 Urban Areas are not yet defined) \\
+11 & FUNCSTAT20 & 2020 Census functional status \\
+12 & ALAND20 & 2020 Census land area \\
+13 & AWATER20 & 2020 Census water area \\
+14 & INTPTLAT20 & 2020 Census latitude of the internal point \\
+15 & INTPTLON20 & 2020 Census longitude of the internal point \\
+16 & HOUSING20 & 2020 Housing Unit Count \\
+17 & POP20 & 2020 Population \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\end{document}
