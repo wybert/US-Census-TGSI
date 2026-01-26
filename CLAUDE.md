@@ -40,7 +40,8 @@ The project uses **Snakemake** for orchestration on a SLURM cluster.
 
 ## Development Status
 - **Current Task:** Consolidating paper draft with codebase and validating pipeline execution.
-- **Paper Repo:** Merged from `wybert/US-census-TGSI-paper` into `paper/`
+- **Primary Data Product:** The dataset to be published is the **post-spatial-join archive**, which enriches ~2 billion tweets with 15-digit Census Block IDs (`GEOID20`).
+- **Paper Repo:** Merged from `wybert/US-census-TGSI-paper` into `paper/`.
 
 
 ## Key Metrics
