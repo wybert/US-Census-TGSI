@@ -111,39 +111,29 @@ all\_confidence\_mean & Float & Average spatial confidence score of tweets in th
 
 \section*{Technical Validation}
 
-% we need conduct a Technical Validation analysis
-% 正文可以不再大篇幅复现分类器性能，但仍应在 Technical Validation 里用 ≈1 段文字＋1 表格说明“模型已按 Xia et al. (2024) 验证，关键指标在本样本中保持一致”。这样既避免冗余，又满足 Scientific Data 对“验证可复现性”的审稿要求。常见做法是：
-% Spatial representativeness（核心）
-% 图 2：Census tract 推文密度 vs. 人口密度热图。
+To ensure the reliability and validity of the US-CT-TSGI dataset, we conducted a comprehensive technical validation across three dimensions: spatial representativeness, temporal stability, and external convergence with established public health indicators.
 
-% 3.1 覆盖度 (Coverage Ratio)	覆盖度似乎会比较小
-%
-%
-% 表 2：语言–族裔相关系数。
-% Need to compare the External convergence: Places data https://www.cdc.gov/places/index.html
-% https://data.cdc.gov/500-Cities-Places/PLACES-Census-Tract-Data-GIS-Friendly-Format-2024-/yjkw-uj5s/about_data
-% This is the 2022 data
-% follow this url https://data.cdc.gov/browse?category=500+Cities+%26+Places&sortBy=relevance&pageSize=100
+\subsection*{Geographic Coverage and Representativeness}
 
-% and filter by PLACES: Census Tract Data, you will get 5 years/items, 所以一共是五年。
-%
-% 选 2023 Maui Wildfire 等事件区，与相邻未灾区 tract 做 DiD，看情感与 FMD 偏差是否放大。
-% 这看起来有一些工作：论文中需要哪些图
+A critical challenge in social media-based indices is the potential for geographic sampling bias. To assess this, we integrated population counts from the 2020 US Decennial Census at the block level. We calculated the Coverage Ratio (CR) for each census tract (aggregated from blocks) as follows:
+\[
+CR = \frac{\text{Tweet Count}}{\text{Population}}
+\]
+We visualize the spatial distribution of $log_2(CR)$ to identify areas of over-representation (positive values) and under-representation (negative values). Additionally, we computed the Gini coefficient and plotted the Lorenz curve to quantify the inequality of tweet distribution relative to the population.
+[Insert Figure: Lorenz Curve and Gini Coefficient Result]
+[Insert Figure: National Map of log2(CR)]
 
-% url lists:
-% https://data.cdc.gov/500-Cities-Places/PLACES-Census-Tract-Data-GIS-Friendly-Format-2024-/yjkw-uj5s/about_data
-% https://data.cdc.gov/500-Cities-Places/PLACES-Census-Tract-Data-GIS-Friendly-Format-2023-/hky2-3tpn/about_data
-% https://data.cdc.gov/500-Cities-Places/PLACES-Census-Tract-Data-GIS-Friendly-Format-2022-/shc3-fzig/about_data
-% https://data.cdc.gov/500-Cities-Places/PLACES-Census-Tract-Data-GIS-Friendly-Format-2021-/mb5y-ytti/about_data
-% https://data.cdc.gov/500-Cities-Places/PLACES-Census-Tract-Data-GIS-Friendly-Format-2020-/ib3w-k9rq/about_data
-% 这些URL我需要什么数据？什么变量呢？怎么下载呢？应该在哪里安装呢？
+\subsection*{Temporal Stability and Data Consistency}
 
-% 第一个覆盖其实仅仅需要结果的数据就可以了
-% 第二个其实需要计算spatial error的：需要每一年的么？也许不需要吧。其实
-% 第三个其实也是仅仅需要结果的数据就可以了。
+To verify the consistency of our sentiment aggregation strategy, we examined the temporal trends of tweet volumes and average sentiment scores from 2012 to 2023. We also compared the sentiment distributions derived from the 'Strict' (confidence=1.0) and 'All' tiers to ensure that including lower-confidence spatial matches does not introduce systematic bias.
+[Insert Figure: Time Series Plot of Tweet Counts and Sentiment]
 
-%
-This section presents any experiments or analyses that are needed to support the technical quality of the dataset. This section may be supported by figures and tables, as needed. This is a required section; authors must present information justifying the reliability of their data.
+\subsection*{Correlation with Public Health Indicators (External Validity)}
+
+As a measure of external validity, we examined the relationship between our Twitter-derived sentiment indices and community-level mental health outcomes. We utilized the CDC PLACES dataset (Local Data for Better Health), specifically the crude prevalence of "Mental health not good for $\ge$14 days" (MHLTH) at the census tract level.
+
+We aggregated our block-level sentiment data to the tract level (population-weighted) for the years 2020, 2021, and 2022 to match the available CDC data. We then calculated the Pearson and Spearman correlation coefficients between the annual average sentiment scores and the MHLTH prevalence rates. A significant negative correlation would support the validity of the Twitter sentiment index as a proxy for subjective well-being.
+[Insert Table/Figure: Correlation Coefficients and Scatter Plots]
 
 \section*{Usage Notes}
 
