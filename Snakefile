@@ -39,16 +39,21 @@ rule all:
     Default target: complete all analysis
     """
     input:
-        # Validation outputs
+        # Validation outputs (All Years)
         expand("outputs/validation/{plot}.png",
                plot=["log2CR_by_census_tract", "log2CR_userdefined_7class"]),
-        # Gini analysis
+        # Gini analysis (All Years)
         "outputs/gini/lorenz_curve.png",
         "outputs/gini/gini-summary.txt",
+        # Validation outputs (2020 Only)
+        "outputs/validation/log2CR_userdefined_7class_2020.png",
+        "outputs/gini/2020_lorenz_curve.png",
+        "outputs/gini/2020_gini-summary.txt",
         # Correlation analysis
         "outputs/correlation/places_correlation_summary.csv",
         expand("outputs/correlation/scatter_sent_vs_MHLTH_{year}.png",
                year=ANALYSIS_YEARS)
+
 
 rule download_only:
     """
@@ -197,7 +202,7 @@ rule aggregate_tweet_counts:
     Aggregate tweet counts by GEOID20 and merge with population data
     """
     input:
-        script="src/04_validation/aggregation/0.4.1-duckdb-validate-merge-data.sql",
+        script="src/04_validation/aggregation/02_merge_counts_and_pop_all_years.sql",
         config="setting.json"
     output:
         config['workspace'] + "/data/all_years_tweet_count.parquet",
@@ -216,10 +221,10 @@ rule aggregate_tweet_counts:
 
 rule calculate_coverage_ratio:
     """
-    Calculate Coverage Ratio (CR) and log2CR metrics
+    Calculate Coverage Ratio (CR) and log2CR metrics (All Years)
     """
     input:
-        script="src/04_validation/aggregation/0.4.2-duckdb-validate-CR.sql",
+        script="src/04_validation/aggregation/03_calculate_cr_all_years.sql",
         data=config['workspace'] + "/data/all_years_tweet_count_with_pop.parquet",
         config="setting.json"
     output:
@@ -237,14 +242,36 @@ rule calculate_coverage_ratio:
         duckdb < {input.script} > {log} 2>&1
         """
 
+rule calculate_coverage_ratio_2020:
+    """
+    Calculate Coverage Ratio (CR) and log2CR metrics for Year 2020
+    """
+    input:
+        script="src/04_validation/aggregation/03_calculate_cr_2020.sql",
+        tweets=config['aggregated_sentiment_output'] + "/yearly_2020.parquet",
+        config="setting.json"
+    output:
+        config['workspace'] + "/data/tweet_count_2020_with_pop_CR.parquet"
+    log:
+        "outputs/logs/calculate_coverage_ratio_2020.log"
+    resources:
+        cpus=4,
+        mem_mb=16000,
+        time="01:00:00",
+        partition="shared"
+    shell:
+        """
+        duckdb < {input.script} > {log} 2>&1
+        """
+
 # ========== Validation & Visualization ==========
 
 rule spatial_representation:
     """
-    Merge census geometry with CR data for spatial visualization
+    Merge census geometry with CR data for spatial visualization (All Years)
     """
     input:
-        script="src/04_validation/representativeness/0.4.3-validation-spatial-representation.py",
+        script="src/04_validation/representativeness/02_merge_geometry.py",
         cr_data=config['workspace'] + "/data/all_years_tweet_count_with_pop_CR.parquet",
         config="setting.json"
     output:
@@ -261,12 +288,34 @@ rule spatial_representation:
         python {input.script} > {log} 2>&1
         """
 
+rule spatial_representation_2020:
+    """
+    Merge census geometry with CR data for spatial visualization (2020 Only)
+    """
+    input:
+        script="src/04_validation/representativeness/02_merge_geometry.py",
+        cr_data=config['workspace'] + "/data/tweet_count_2020_with_pop_CR.parquet",
+        config="setting.json"
+    output:
+        config['workspace'] + "/data/census_tracts_merged_shifted_geo_2020.parquet"
+    log:
+        "outputs/logs/spatial_representation_2020.log"
+    resources:
+        cpus=110,
+        mem_mb=100000,
+        time="04:00:00",
+        partition="sapphire"
+    shell:
+        """
+        python {input.script} --input {input.cr_data} --output {output} > {log} 2>&1
+        """
+
 rule validation_histogram:
     """
     Generate log2CR histogram and map visualizations
     """
     input:
-        script="src/04_validation/representativeness/0.4.4-validation-hist.py",
+        script="src/04_validation/representativeness/04_plot_histogram.py",
         geo_data=config['workspace'] + "/data/census_tracts_merged_shifted_geo.parquet",
         config="setting.json"
     output:
@@ -285,10 +334,10 @@ rule validation_histogram:
 
 rule validation_classification:
     """
-    Generate classified log2CR map with custom bins
+    Generate classified log2CR map with custom bins (All Years)
     """
     input:
-        script="src/04_validation/representativeness/0.4.5-validation-vis3-classify-customized.py",
+        script="src/04_validation/representativeness/05_plot_maps_classified.py",
         geo_data=config['workspace'] + "/data/census_tracts_merged_shifted_geo.parquet",
         config="setting.json"
     output:
@@ -305,12 +354,34 @@ rule validation_classification:
         python {input.script} > {log} 2>&1
         """
 
-rule gini_analysis:
+rule validation_classification_2020:
     """
-    Compute Gini coefficient and Lorenz curve
+    Generate classified log2CR map with custom bins (2020 Only)
     """
     input:
-        script="src/04_validation/representativeness/0.4.7-validation-gini-lorenz.py",
+        script="src/04_validation/representativeness/05_plot_maps_classified.py",
+        geo_data=config['workspace'] + "/data/census_tracts_merged_shifted_geo_2020.parquet",
+        config="setting.json"
+    output:
+        "outputs/validation/log2CR_userdefined_7class_2020.png"
+    log:
+        "outputs/logs/validation_classification_2020.log"
+    resources:
+        cpus=4,
+        mem_mb=32000,
+        time="01:00:00",
+        partition="shared"
+    shell:
+        """
+        python {input.script} --input {input.geo_data} --output {output} > {log} 2>&1
+        """
+
+rule gini_analysis:
+    """
+    Compute Gini coefficient and Lorenz curve (All Years)
+    """
+    input:
+        script="src/04_validation/representativeness/03_calculate_gini_lorenz.py",
         cr_data=config['workspace'] + "/data/all_years_tweet_count_with_pop_CR.parquet",
         config="setting.json"
     output:
@@ -329,6 +400,31 @@ rule gini_analysis:
         python {input.script} > {log} 2>&1 || echo "Gini analysis completed with warnings"
         """
 
+rule gini_analysis_2020:
+    """
+    Compute Gini coefficient and Lorenz curve (2020 Only)
+    """
+    input:
+        script="src/04_validation/representativeness/03_calculate_gini_lorenz.py",
+        cr_data=config['workspace'] + "/data/tweet_count_2020_with_pop_CR.parquet",
+        config="setting.json"
+    output:
+        "outputs/gini/2020_lorenz_curve.png",
+        "outputs/gini/2020_lorenz_points.csv",
+        "outputs/gini/2020_gini-summary.txt"
+    log:
+        "outputs/logs/gini_analysis_2020.log"
+    resources:
+        cpus=2,
+        mem_mb=16000,
+        time="00:30:00",
+        partition="shared"
+    shell:
+        """
+        python {input.script} --input {input.cr_data} --output-prefix 2020_ > {log} 2>&1 || echo "Gini analysis 2020 completed with warnings"
+        """
+
+
 # ========== Tract-level Aggregation for Correlation ==========
 
 rule aggregate_to_tract_level:
@@ -336,7 +432,7 @@ rule aggregate_to_tract_level:
     Aggregate block-level data to tract-level and join with PLACES data
     """
     input:
-        script="src/04_validation/aggregation/0.6.1-agg-to-track-level-interactive.sql",
+        script="src/04_validation/aggregation/05_prepare_correlation_tracts.sql",
         config="setting.json"
     output:
         config['workspace'] + "/data/sentiment_places_data_joined.parquet"
