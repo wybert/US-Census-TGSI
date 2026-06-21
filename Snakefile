@@ -30,6 +30,7 @@ STATES = ["01", "02", "04", "05", "06", "08", "09", "10", "11", "12",
           "45", "46", "47", "48", "49", "50", "51", "53", "54", "55", "56"]
 
 YEARS = list(range(2010, 2024))
+MONTHS = list(range(1, 13))  # Spatial join is parallelized per (year, month)
 ANALYSIS_YEARS = [2020, 2021, 2022]  # Years for correlation analysis
 
 # ========== Target Rules ==========
@@ -88,11 +89,11 @@ rule correlation_only:
 
 rule spatial_join_all:
     """
-    Run spatial join for all years (parallelized by year)
+    Run spatial join for all years (parallelized per year-month; join is single-threaded)
     """
     input:
-        expand(config['tweets_with_census_blocks_confidence'] + "/{year}/.spatial_join_confidence_complete",
-               year=YEARS)
+        expand(config['tweets_with_census_blocks_confidence'] + "/{year}/.sj_{month}_complete",
+               year=YEARS, month=MONTHS)
 
 # ========== Data Acquisition ==========
 
@@ -108,7 +109,7 @@ rule download_census_data:
     resources:
         cpus=1,
         mem_mb=2000,
-        time="02:00:00",
+        runtime=120,
         partition="shared"
     shell:
         """
@@ -134,11 +135,11 @@ rule find_missing_sentiment:
     resources:
         cpus=1,
         mem_mb=4000,
-        time="00:30:00",
+        runtime=30,
         partition="shared"
     shell:
         """
-        python {input.script} > {log} 2>&1
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
         """
 
 # ========== Tweet-Sentiment Merging ==========
@@ -160,11 +161,11 @@ rule merge_tweets_sentiment:
     resources:
         cpus=110,
         mem_mb=100000,
-        time="12:00:00",
+        runtime=720,
         partition="sapphire"
     shell:
         """
-        python {input.script} > {log} 2>&1
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
         touch {output.flag}
         """
 
@@ -172,7 +173,10 @@ rule merge_tweets_sentiment:
 
 rule spatial_join:
     """
-    Spatial join between tweets and census blocks with confidence weighting
+    Spatial join between tweets and census blocks with confidence weighting.
+    Parallelized per (year, month): the DuckDB ST_Within join is single-threaded
+    (~4.5h for a high-volume month), so many small jobs run concurrently rather
+    than one 100-core job idling on serial months.
     """
     input:
         script="src/03_spatial_join/0.3.9-run-2020-spatial-join.py",
@@ -180,29 +184,58 @@ rule spatial_join:
         census=config['census_data_2020'] + "/us_census_blocks_2020.geoparquet", # Merged census data
         config="setting.json"
     output:
-        # Per-year flag file to track completion
-        flag=config['tweets_with_census_blocks_confidence'] + "/{year}/.spatial_join_confidence_complete"
+        # Per-(year,month) flag file to track completion
+        flag=config['tweets_with_census_blocks_confidence'] + "/{year}/.sj_{month}_complete"
     log:
-        "outputs/logs/spatial_join_confidence_{year}.log"
+        "outputs/logs/spatial_join_confidence_{year}_{month}.log"
     resources:
-        cpus=100,
-        mem_mb=900000,
-        time="24:00:00", # Reduced time since it's only one year per job
+        cpus=8,
+        mem_mb=350000,
+        runtime=600, # 10h: a single high-volume month takes ~5h single-threaded
         partition="sapphire"
     shell:
         """
-        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} --start-year {wildcards.year} --end-year {wildcards.year} > {log} 2>&1
+        DUCKDB_MEMORY_LIMIT=320GB /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} --start-year {wildcards.year} --end-year {wildcards.year} --month {wildcards.month} > {log} 2>&1
         touch {output.flag}
         """
 
 # ========== DuckDB Aggregation ==========
+
+rule generate_aggregated_stats:
+    """
+    Stage 04A: aggregate spatial-join output to GEOID20 (block) level at
+    daily/monthly/yearly granularity, confidence-stratified. Produces the
+    final data product in aggregated_sentiment_output (the daily/monthly/yearly
+    parquet that downstream CR / correlation steps consume).
+    """
+    input:
+        script="src/04_validation/aggregation/01_generate_aggregated_stats.py",
+        sj=expand(config['tweets_with_census_blocks_confidence'] + "/{year}/.sj_{month}_complete",
+                  year=YEARS, month=MONTHS),
+        config="setting.json"
+    output:
+        flag=config['aggregated_sentiment_output'] + "/.aggregation_complete",
+        yearly_2020=config['aggregated_sentiment_output'] + "/yearly_2020.parquet"
+    log:
+        "outputs/logs/generate_aggregated_stats.log"
+    resources:
+        cpus=64,
+        mem_mb=900000,
+        runtime=720,
+        partition="sapphire"
+    shell:
+        """
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} --start-year 2010 --end-year 2023 > {log} 2>&1
+        touch {output.flag}
+        """
 
 rule aggregate_tweet_counts:
     """
     Aggregate tweet counts by GEOID20 and merge with population data
     """
     input:
-        script="src/04_validation/aggregation/02_merge_counts_and_pop_all_years.sql",
+        script="src/04_validation/aggregation/02_merge_counts_and_pop_all_years.py",
+        agg_flag=config['aggregated_sentiment_output'] + "/.aggregation_complete",
         config="setting.json"
     output:
         config['workspace'] + "/data/all_years_tweet_count.parquet",
@@ -212,11 +245,11 @@ rule aggregate_tweet_counts:
     resources:
         cpus=4,
         mem_mb=32000,
-        time="02:00:00",
+        runtime=120,
         partition="shared"
     shell:
         """
-        duckdb < {input.script} > {log} 2>&1
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
         """
 
 rule calculate_coverage_ratio:
@@ -224,7 +257,7 @@ rule calculate_coverage_ratio:
     Calculate Coverage Ratio (CR) and log2CR metrics (All Years)
     """
     input:
-        script="src/04_validation/aggregation/03_calculate_cr_all_years.sql",
+        script="src/04_validation/aggregation/03_calculate_cr_all_years.py",
         data=config['workspace'] + "/data/all_years_tweet_count_with_pop.parquet",
         config="setting.json"
     output:
@@ -235,11 +268,11 @@ rule calculate_coverage_ratio:
     resources:
         cpus=4,
         mem_mb=16000,
-        time="01:00:00",
+        runtime=60,
         partition="shared"
     shell:
         """
-        duckdb < {input.script} > {log} 2>&1
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
         """
 
 rule calculate_coverage_ratio_2020:
@@ -247,7 +280,7 @@ rule calculate_coverage_ratio_2020:
     Calculate Coverage Ratio (CR) and log2CR metrics for Year 2020
     """
     input:
-        script="src/04_validation/aggregation/03_calculate_cr_2020.sql",
+        script="src/04_validation/aggregation/03_calculate_cr_2020.py",
         tweets=config['aggregated_sentiment_output'] + "/yearly_2020.parquet",
         config="setting.json"
     output:
@@ -257,11 +290,11 @@ rule calculate_coverage_ratio_2020:
     resources:
         cpus=4,
         mem_mb=16000,
-        time="01:00:00",
+        runtime=60,
         partition="shared"
     shell:
         """
-        duckdb < {input.script} > {log} 2>&1
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
         """
 
 # ========== Validation & Visualization ==========
@@ -279,13 +312,13 @@ rule spatial_representation:
     log:
         "outputs/logs/spatial_representation.log"
     resources:
-        cpus=110,
-        mem_mb=100000,
-        time="04:00:00",
+        cpus=64,
+        mem_mb=450000,
+        runtime=240,
         partition="sapphire"
     shell:
         """
-        python {input.script} > {log} 2>&1
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
         """
 
 rule spatial_representation_2020:
@@ -301,13 +334,13 @@ rule spatial_representation_2020:
     log:
         "outputs/logs/spatial_representation_2020.log"
     resources:
-        cpus=110,
-        mem_mb=100000,
-        time="04:00:00",
+        cpus=64,
+        mem_mb=450000,
+        runtime=240,
         partition="sapphire"
     shell:
         """
-        python {input.script} --input {input.cr_data} --output {output} > {log} 2>&1
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} --input {input.cr_data} --output {output} > {log} 2>&1
         """
 
 rule validation_histogram:
@@ -325,11 +358,11 @@ rule validation_histogram:
     resources:
         cpus=4,
         mem_mb=32000,
-        time="01:00:00",
+        runtime=60,
         partition="shared"
     shell:
         """
-        python {input.script} > {log} 2>&1
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
         """
 
 rule validation_classification:
@@ -347,11 +380,11 @@ rule validation_classification:
     resources:
         cpus=4,
         mem_mb=32000,
-        time="01:00:00",
+        runtime=60,
         partition="shared"
     shell:
         """
-        python {input.script} > {log} 2>&1
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
         """
 
 rule validation_classification_2020:
@@ -369,11 +402,11 @@ rule validation_classification_2020:
     resources:
         cpus=4,
         mem_mb=32000,
-        time="01:00:00",
+        runtime=60,
         partition="shared"
     shell:
         """
-        python {input.script} --input {input.geo_data} --output {output} > {log} 2>&1
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} --input {input.geo_data} --output {output} > {log} 2>&1
         """
 
 rule gini_analysis:
@@ -393,11 +426,11 @@ rule gini_analysis:
     resources:
         cpus=2,
         mem_mb=16000,
-        time="00:30:00",
+        runtime=30,
         partition="shared"
     shell:
         """
-        python {input.script} > {log} 2>&1 || echo "Gini analysis completed with warnings"
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1 || echo "Gini analysis completed with warnings"
         """
 
 rule gini_analysis_2020:
@@ -417,13 +450,12 @@ rule gini_analysis_2020:
     resources:
         cpus=2,
         mem_mb=16000,
-        time="00:30:00",
+        runtime=30,
         partition="shared"
     shell:
         """
-        python {input.script} --input {input.cr_data} --output-prefix 2020_ > {log} 2>&1 || echo "Gini analysis 2020 completed with warnings"
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} --input {input.cr_data} --output-prefix 2020_ > {log} 2>&1 || echo "Gini analysis 2020 completed with warnings"
         """
-
 
 # ========== Tract-level Aggregation for Correlation ==========
 
@@ -432,7 +464,8 @@ rule aggregate_to_tract_level:
     Aggregate block-level data to tract-level and join with PLACES data
     """
     input:
-        script="src/04_validation/aggregation/05_prepare_correlation_tracts.sql",
+        script="src/04_validation/aggregation/05_prepare_correlation_tracts.py",
+        agg_flag=config['aggregated_sentiment_output'] + "/.aggregation_complete",
         config="setting.json"
     output:
         config['workspace'] + "/data/sentiment_places_data_joined.parquet"
@@ -441,11 +474,11 @@ rule aggregate_to_tract_level:
     resources:
         cpus=8,
         mem_mb=64000,
-        time="02:00:00",
+        runtime=120,
         partition="shared"
     shell:
         """
-        duckdb < {input.script} > {log} 2>&1
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
         """
 
 # ========== Correlation Analysis ==========
@@ -467,11 +500,11 @@ rule correlation_analysis:
     resources:
         cpus=4,
         mem_mb=32000,
-        time="01:00:00",
+        runtime=60,
         partition="shared"
     shell:
         """
-        python {input.script} > {log} 2>&1
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
         """
 
 rule correlation_plots:
@@ -489,11 +522,11 @@ rule correlation_plots:
     resources:
         cpus=4,
         mem_mb=32000,
-        time="01:00:00",
+        runtime=60,
         partition="shared"
     shell:
         """
-        python {input.script} > {log} 2>&1
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
         """
 
 # ========== Utility Rules ==========

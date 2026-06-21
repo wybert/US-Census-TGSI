@@ -18,14 +18,29 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 import json
+import argparse
+
+# ---------- args ----------
+parser = argparse.ArgumentParser()
+parser.add_argument("--input", help="Path to input parquet file (CR data)", default=None)
+parser.add_argument("--output-prefix", help="Prefix for output files (e.g. '2020_')", default="")
+args = parser.parse_args()
 
 # Load configuration
 with open('setting.json') as f:
     config = json.load(f)
 
 # ---------- paths ----------
-IN = Path(config["workspace"]) / "data/all_years_tweet_count_with_pop_CR.parquet"
-OUT_DIR = Path(config["outputs_dir"]) / "gini"; OUT_DIR.mkdir(exist_ok=True, parents=True)
+if args.input:
+    IN = Path(args.input)
+else:
+    IN = Path(config["workspace"]) / "data/all_years_tweet_count_with_pop_CR.parquet"
+
+OUT_DIR = Path(config["outputs_dir"]) / "gini"
+OUT_DIR.mkdir(exist_ok=True, parents=True)
+
+prefix = args.output_prefix
+
 
 # ---------- load ----------
 df = pd.read_parquet(IN)
@@ -67,7 +82,7 @@ area = np.trapz(y, x)                 # same as sum(0.5*(x_i-x_{i-1})*(y_i+y_{i-
 gini = 1.0 - 2.0*area
 
 # save Lorenz points
-pd.DataFrame({"cum_pop_share": x, "cum_tweet_share": y}).to_csv(OUT_DIR/"lorenz_points.csv", index=False)
+pd.DataFrame({"cum_pop_share": x, "cum_tweet_share": y}).to_csv(OUT_DIR/f"{prefix}lorenz_points.csv", index=False)
 
 # ---------- plot ----------
 fig, ax = plt.subplots(figsize=(5.5, 5.0), constrained_layout=True)
@@ -80,13 +95,16 @@ ax.grid(alpha=0.2)
 ax.legend(loc="upper left")
 ax.text(0.60, 0.08, f"Gini = {gini:.3f}", fontsize=11,
         bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="0.8"))
-fig.savefig(OUT_DIR/"lorenz_curve.png", dpi=300)
+fig.savefig(OUT_DIR/f"{prefix}lorenz_curve.png", dpi=300)
 
 # ---------- print summary ----------
 print("\n=== Technical Validation (coverage/representativeness) ===")
+print(f"Input file         : {IN.name}")
 print(f"Tracts total       : {len(df):,}")
 print(f"Tracts reportable  : {len(reportable):,} ({len(reportable)/len(df):.1%} of tracts)")
 print(f"Covered pop. share : {covered_pop_share:.3%}")          # population still covered after masking
 print(f"Gini (reportable)  : {gini:.3f}")                       # inequality of tweet allocation vs population
 print(f"log2(CR) quantiles : P10={p10:.2f}, P50={p50:.2f}, P90={p90:.2f}  (reportable)")
 print(f"Outputs saved to   : {OUT_DIR.resolve()}")
+with open(OUT_DIR/f"{prefix}gini-summary.txt", "w") as f:
+    f.write(f"Gini: {gini:.4f}\nFile: {IN.name}\n")

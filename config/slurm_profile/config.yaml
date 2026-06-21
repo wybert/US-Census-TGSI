@@ -1,8 +1,10 @@
 executor: slurm
-jobs: 14
+jobs: 10
 default-resources:
   slurm_partition: "sapphire"
-  slurm_account: "cga"  # Optional, usually inferred or defaults
+  mem_mb: 900000
+  runtime: 1440
+
 latency-wait: 60
 use-conda: false
 printshellcmds: true
