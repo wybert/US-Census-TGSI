@@ -4,14 +4,32 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import json
 import os
+import argparse
+
+# ---------- args ----------
+parser = argparse.ArgumentParser()
+parser.add_argument("--input", help="Path to input geoparquet file", default=None)
+parser.add_argument("--output", help="Path to output map image", default=None)
+args = parser.parse_args()
 
 # Load configuration
 with open('setting.json') as f:
     config = json.load(f)
 
-g = gpd.read_parquet(
-    os.path.join(config["workspace"], "data/census_tracts_merged_shifted_geo.parquet")
-).to_crs(5070)
+# Input path logic
+if args.input:
+    input_geo_path = args.input
+else:
+    input_geo_path = os.path.join(config["workspace"], "data/census_tracts_merged_shifted_geo.parquet")
+
+# Output path logic
+if args.output:
+    output_img_path = args.output
+else:
+    output_img_path = os.path.join(config["outputs_dir"], "validation/log2CR_userdefined_7class.png")
+
+g = gpd.read_parquet(input_geo_path).to_crs(5070)
+
 
 mask = g[g["mask_low_coverage"] == 1]
 ok   = g[g["mask_low_coverage"] == 0].copy()
@@ -41,4 +59,5 @@ masked_patch = Patch(facecolor="#D9D9D9", edgecolor="none", label="Masked / No d
 leg2 = ax.legend(handles=[masked_patch], loc="lower left", frameon=False)
 ax.add_artist(leg1)     # 把原图例加回去
 
-fig.savefig(os.path.join(config["outputs_dir"], "validation/log2CR_userdefined_7class.png"), dpi=300, bbox_inches="tight")
+fig.savefig(output_img_path, dpi=300, bbox_inches="tight")
+

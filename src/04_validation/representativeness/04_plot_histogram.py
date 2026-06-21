@@ -11,11 +11,9 @@ with open('setting.json') as f:
     config = json.load(f)
 
 # 1) 读几何 + 指标，并过滤低覆盖
-# tracts = gpd.read_parquet(
-#     os.path.join(config["workspace"], "data/census_tracts_merged_shifted_geo.parquet")
-# )
-# 如果你有“已过滤”的表，直接 merge 那个；否则在这里过滤
-# g = tracts[tracts["mask_low_coverage"] == 0]
+tracts = gpd.read_parquet(
+    os.path.join(config["workspace"], "data/census_tracts_merged_shifted_geo.parquet")
+)
 g = tracts.copy()
 g["log2CR"] = g["log2CR"].where(g["mask_low_coverage"] == 0, np.nan)
 # plt.figure()

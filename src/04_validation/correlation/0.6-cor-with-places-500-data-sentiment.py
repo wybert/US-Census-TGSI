@@ -12,25 +12,16 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
-from typing import Dict
 import json
 
 # Load configuration
 with open('setting.json') as f:
     config = json.load(f)
 
-# ========== PATHS: 修改为你的本地路径 ==========
-places_data_dir = Path(config["places_data"])
-PLACES_FILES: Dict[int, str] = {
-    2020: str(places_data_dir / "PLACES__Census_Tract_Data_(GIS_Friendly_Format),_2020_release_20250903.csv"),
-    2021: str(places_data_dir / "PLACES__Census_Tract_Data_(GIS_Friendly_Format),_2021_release_20250903.csv"),
-    2022: str(places_data_dir / "PLACES__Census_Tract_Data_(GIS_Friendly_Format),_2022_release_20250903.csv"),
-    2023: str(places_data_dir / "PLACES__Census_Tract_Data_(GIS_Friendly_Format),_2023_release_20250903.csv"),
-    2024: str(places_data_dir / "PLACES__Census_Tract_Data_(GIS_Friendly_Format),_2024_release_20250903.csv"),
-}
-# 你每年的情感数据（tract 级）：文件名或模板
-SENT_DIR = Path(config["sentiment_by_tract"])
-SENT_PATTERN = "tract_sentiment_{year}.parquet"  # 文件需含列：GEOID20_tract, sent_mean, mask_low_coverage[, n_tweets]
+# Single source of truth: the tract-year sentiment+PLACES join produced by
+# 05_prepare_correlation_tracts.py (cols: year, GEOID20_tract, tweets_year_tract,
+# sent_mean_year_tract, mask_low_coverage, pop, mhlth, mammouse, release_year).
+JOINED_PATH = Path(config["workspace"]) / "data" / "sentiment_places_data_joined.parquet"
 
 OUT_DIR = Path(config["outputs_dir"]) / "correlation"; OUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -41,59 +32,6 @@ TARGET_COL = "MHLTH_CrudePrev"
 DISCRIM_COL = "MAMMOUSE_CrudePrev"
 
 # ========== 工具函数 ==========
-def load_places(path: str) -> pd.DataFrame:
-    usecols = ["TractFIPS", "TotalPopulation", TARGET_COL, DISCRIM_COL]
-    df = pd.read_csv(path, usecols=usecols, dtype={"TractFIPS": str})
-    df.rename(columns={
-        "TractFIPS": "GEOID20_tract",
-        "TotalPopulation": "pop",
-        TARGET_COL: "mhlth",
-        DISCRIM_COL: "disc"
-    }, inplace=True)
-    # 规范类型
-    df["GEOID20_tract"] = df["GEOID20_tract"].str.zfill(11)
-    for c in ["mhlth", "disc", "pop"]:
-        df[c] = pd.to_numeric(df[c], errors="coerce")
-    return df
-
-def load_sentiment_tract(year: int) -> pd.DataFrame:
-    """读取你准备的 'tract_sentiment_{year}.parquet'；如不存在，抛错。"""
-    f = SENT_DIR / SENT_PATTERN.format(year=year)
-    if not f.exists():
-        raise FileNotFoundError(f"Missing {f}. If you only have block-level files, use the block→tract aggregation branch.")
-    s = pd.read_parquet(f)
-    # 规范列名
-    rename_map = {}
-    if "sent_mean_2020" in s.columns and "sent_mean" not in s.columns:
-        rename_map["sent_mean_2020"] = "sent_mean"
-    s = s.rename(columns=rename_map)
-    # 必要列检查
-    need = {"GEOID20_tract", "sent_mean", "mask_low_coverage"}
-    missing = need - set(s.columns)
-    if missing:
-        raise ValueError(f"{f} lacks columns: {missing}")
-    s["GEOID20_tract"] = s["GEOID20_tract"].astype(str).str.zfill(11)
-    return s[["GEOID20_tract", "sent_mean", "mask_low_coverage"] + ([ "n_tweets"] if "n_tweets" in s.columns else [])].copy()
-
-# ------- 可选：从 block → tract 聚合（如果你只有 15 位 block GEOID） -------
-def aggregate_block_to_tract(block_df: pd.DataFrame, year: int) -> pd.DataFrame:
-    """
-    输入 block_df 至少包含：
-    GEOID20_block(15位), sent_mean_block, mask_low_coverage[, n_tweets]
-    聚合到 tract：sent_mean 用 n_tweets 加权平均（若无 n_tweets，则简单均值）
-    """
-    b = block_df.copy()
-    b["GEOID20_tract"] = b["GEOID20_block"].astype(str).str.slice(0, 11)
-    w = b["n_tweets"] if "n_tweets" in b.columns else pd.Series(1.0, index=b.index)
-    grp = b.groupby("GEOID20_tract", as_index=False).apply(
-        lambda g: pd.Series({
-            "sent_mean": np.average(g["sent_mean_block"], weights=(g["n_tweets"] if "n_tweets" in g.columns else None)),
-            "mask_low_coverage": 1 if (g["mask_low_coverage"]==1).all() else 0,   # 只要组内有可报告就保留为0
-            "n_tweets": g["n_tweets"].sum() if "n_tweets" in g.columns else np.nan
-        })
-    ).reset_index(drop=True)
-    return grp
-
 def weighted_corr(x, y, w):
     """人口加权 Pearson 相关。"""
     x, y, w = map(lambda s: pd.Series(s, dtype=float), (x, y, w))
@@ -103,10 +41,13 @@ def weighted_corr(x, y, w):
     return cov / np.sqrt(varx * vary)
 
 def rank_spearman(x, y):
-    """无权 Spearman（用平均秩+Pearson）。"""
-    rx = pd.Series(x).rank(method="average")
-    ry = pd.Series(y).rank(method="average")
-    return np.corrcoef(rx, ry)[0,1]
+    """无权 Spearman（用平均秩+Pearson）。Drops NaN pairs first."""
+    d = pd.DataFrame({"x": x, "y": y}).dropna()
+    if len(d) < 2:
+        return np.nan
+    rx = d["x"].rank(method="average")
+    ry = d["y"].rank(method="average")
+    return np.corrcoef(rx, ry)[0, 1]
 
 def weighted_spearman(x, y, w):
     """人口加权 Spearman（对秩做加权 Pearson）。"""
@@ -132,19 +73,18 @@ def decile_curve(x, y, w=None, q=10):
     return agg
 
 # ========== 主流程 ==========
-years = sorted(PLACES_FILES.keys())
+joined = pd.read_parquet(JOINED_PATH)
+# Normalize to the column names the analysis below expects.
+joined = joined.rename(columns={"sent_mean_year_tract": "sent_mean", "mammouse": "disc"})
+years = sorted(joined["year"].unique())
 rows = []
 
 for year in years:
     print(f"\n=== {year} ===")
-    places = load_places(PLACES_FILES[year])
-
-    # 情感：如果已有 tract 文件，用 load_sentiment_tract(year)；若只有 block，请先聚合（见上）
-    senti = load_sentiment_tract(year)
-
-    # 合并与过滤
-    df = senti.merge(places, on="GEOID20_tract", how="inner")
-    df = df[(df["mask_low_coverage"] == 0) & df["pop"].notna() & df["mhlth"].notna() & df["sent_mean"].notna()]
+    df = joined[joined["year"] == year].copy()
+    # 05 already applied mask_low_coverage==0 and non-null pop/mhlth; re-filter defensively.
+    df = df[(df["mask_low_coverage"] == 0) & df["pop"].notna()
+            & df["mhlth"].notna() & df["sent_mean"].notna()]
     if df.empty:
         print("No data after filtering; check inputs.")
         continue

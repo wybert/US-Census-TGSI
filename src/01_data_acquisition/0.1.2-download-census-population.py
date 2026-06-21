@@ -55,10 +55,11 @@ for fips in tqdm(STATE_FIPS, desc="Processing states"):
 
     params = {
         "get": CENSUS_VARS,
-        "for": "block", # Query for 'block'
-        "in": f"state:{fips} county:*", # within all counties of the state
-        # "key": "YOUR_CENSUS_API_KEY" # Optional: Add your API key if you have one to increase request limits
+        "for": "block",
+        "in": f"state:{fips} county:*",
     }
+    if config.get("census_api_key"):
+        params["key"] = config["census_api_key"]
 
     tqdm.write(f"↓ Downloading population for State FIPS: {fips}...")
     try:

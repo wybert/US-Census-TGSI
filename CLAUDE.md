@@ -1,110 +1,87 @@
-# US-Census-TGSI Project Guide
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Context
 **Title:** Twitter Sentiment Geographical Index Dataset For US in Census Level (US-CT-TSGI)
 **Authors:** Xiaokang Fu, Devika Jain, Jack Hayes (Harvard CGA & Wuhan University)
-**Goal:** Create a high-resolution, longitudinal (2010-2023) sentiment index for the United States at the **Census Tract** level.
-**Methodology:**
-1.  **Input:** ~2 billion geotagged tweets (2010-2023) + BERT-based sentiment scores.
-2.  **Process:** Spatial join with TIGER/Line 2020 Census Tract boundaries.
-3.  **Output:** Daily, monthly, and yearly sentiment scores and tweet counts for 8.18 million US census tracts.
-4.  **Validation:** Coverage Ratio (CR), Spatial Representativeness (Gini/Lorenz), and Correlation with CDC PLACES health data (Mental Health).
+**Goal:** Create a high-resolution, longitudinal (2010-2023) sentiment index at the **Census Tract** level from ~2 billion geotagged tweets using BERT-based sentiment scores and TIGER/Line 2020 Census Tract boundaries.
 
-## Pipeline Overview
-The project uses **Snakemake** for orchestration on a SLURM cluster.
-1.  **01_data_acquisition**: Download Census TIGER/Line shapefiles.
-2.  **02_merging**: Combine raw tweets with sentiment scores.
-3.  **03_spatial_join**: Map tweets to Census Blocks/Tracts (High Compute).
-4.  **04_validation**: Validation suite including:
-    *   Coverage Ratio (CR) & Spatial Representativeness (Gini/Lorenz)
-    *   Correlation Analysis with CDC PLACES health data (Mental Health)
-
-## Repository Structure
-- `src/`: Source code grouped by pipeline stage.
-    - `01_data_acquisition/`
-    - `02_merging/`
-    - `03_spatial_join/`
-    - `04_validation/`
-        - `aggregation/`: Block/Tract aggregation logic
-        - `representativeness/`: CR, Gini, Maps
-        - `correlation/`: Health data correlation
-        - `utils/`: Testing and helper scripts
-- `scripts/`: Helper and submission scripts.
-- `config/`: Configuration files (env, json).
-- `docs/`: Documentation (Pipeline, setup, logs).
-- `paper/`: Latex source for the manuscript "Twitter Sentiment Geographical Index Dataset...".
-- `Snakefile`: Main workflow definition.
-- `setting.json`: Global configuration.
+## Pipeline Overview (Snakemake on SLURM)
+1. **01_data_acquisition**: Download Census TIGER/Line shapefiles; validate/recompute missing sentiment files.
+2. **02_merging**: Combine raw tweets (TSV.GZ) with BERT sentiment scores via `message_id` join.
+3. **03_spatial_join**: Point-in-polygon join (EPSG:4326) → assigns `GEOID20` to each tweet; 93,574 files × 51 states = ~4.77M ops.
+4. **04_validation**:
+   - `aggregation/`: DuckDB aggregation → daily/monthly/yearly parquet at block → tract level.
+   - `representativeness/`: Coverage Ratio (CR), Gini/Lorenz, choropleth maps.
+   - `correlation/`: Weighted Spearman/Pearson vs CDC PLACES health data.
+   - `utils/`: Testing and helper scripts.
 
 ## Commands
-- **Dry Run:** `snakemake -n`
-- **Run Local:** `snakemake -j 4`
-- **Run SLURM:** `snakemake --profile config/slurm_profile`
-- **Help:** `/help`
 
-## Development Status
-- **Current Task:** Consolidating paper draft with codebase and validating pipeline execution.
-- **Primary Data Product:** The final dataset for publication is the **Aggregated Sentiment Statistics** (Daily/Monthly/Yearly) at the Census Tract level.
-    - **Path:** `/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/data/aggregated_sentiment_stats`
-    - **Format:** Parquet files (e.g., `daily_2022.parquet`, `monthly_2022.parquet`, `yearly_2022.parquet`)
-- **Paper Repo:** Merged from `wybert/US-census-TGSI-paper` into `paper/`.
-
-
-## Key Metrics
-
-**CR (Coverage Ratio)**: `tweet_count / population` at block/tract level
-**log2(CR)**: Symmetrically scaled metric where 0 = proportional representation, -1 = 50% underrepresented, +1 = 200% overrepresented
-**mask_low_coverage**: Binary flag filtering tracts with <20 tweets to avoid spurious correlations
-
-## Running the Pipeline
-
-### HPC Execution (SLURM)
+### Snakemake
 ```bash
-# Step 1: Merge tweets with sentiment scores
-sbatch src/02_merging/0.2.1-combine-tweets-sentiment-slurm-run.sh
+snakemake -n                           # Dry run
+snakemake -j 4                         # Run locally
+snakemake --profile config/slurm_profile  # Run on SLURM (uses config/slurm_profile/config.yaml)
+snakemake --dag | dot -Tpng > outputs/pipeline_dag.png  # Visualize DAG
+```
 
-# Step 2: Spatial join with census blocks
+**Named target rules** (run a subset of the pipeline):
+```bash
+snakemake download_only          # Census TIGER/Line shapefiles only
+snakemake check_data_quality     # Validate sentiment file completeness
+snakemake validation_only        # CR + Gini validation only
+snakemake correlation_only       # CDC PLACES correlation only
+snakemake spatial_join_all       # Spatial join all years
+snakemake clean                  # Remove output PNGs/CSVs/logs
+snakemake clean_all              # Remove all generated data (destructive)
+```
+
+### HPC Execution (SLURM direct)
+```bash
+sbatch src/02_merging/0.2.1-combine-tweets-sentiment-slurm-run.sh
 sbatch src/03_spatial_join/0.3.2-run-spatial-join.sh
 ```
 
-### DuckDB Interactive Analysis
-```bash
-duckdb -init src/04_validation/aggregation/0.6.1-agg-to-track-level-interactive.sql
-```
-For non-interactive execution, use `.read` or `-c` flag with individual SQL files.
-
 ### Python Environment
-Uses conda environment `geo` with dependencies:
-- `pandarallel`: Parallel pandas operations
-- `geopandas`: Spatial data handling
-- `duckdb`: Columnar analytics
-- Standard scipy/numpy/matplotlib stack
+Conda env `geo` — activate via `/n/home11/xiaokangfu/.conda/envs/geo/bin/python`
+Key packages: `geopandas`, `duckdb`, `pandarallel`, `scipy`, `matplotlib`.
+Always call `pandarallel.initialize()` before `.parallel_apply()`.
 
-Activate: `/n/home11/xiaokangfu/.conda/envs/geo/bin/python`
+## Configuration (`setting.json`)
+All data paths are defined here and loaded by Snakemake (`configfile: "setting.json"`). Key paths:
+- `workspace`: `/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace` — intermediate data lives here
+- `aggregated_sentiment_output`: `<workspace>/data/aggregated_sentiment_stats` — **final data product** (daily/monthly/yearly parquet)
+- `geo_tweets_archive_base_path`, `sentiment_file_base_path`: raw inputs on holylabs
+- `census_data_2020`: merged census block geoparquet
+- `census_pop`: population parquet for CR calculations
 
-## Data Flow
+## Repository Structure
+- `src/`: Pipeline scripts numbered by step (e.g., `0.1-`, `0.3.9-`).
+- `scripts/`: SLURM submission helpers (`0.4.3-submit-spatial-rep.sh`, etc.).
+- `config/slurm_profile/config.yaml`: Default SLURM profile (sapphire partition, 900GB RAM, 1440 min).
+- `docs/data-pipeline-flowchart.txt`: ASCII flowchart of full pipeline.
+- `outputs/`: Local results — `validation/`, `gini/`, `correlation/`, `logs/`.
+- `data/500-Cities-Places/`: CDC PLACES CSV files (2020–2024 releases).
+- `paper/`: LaTeX manuscript source.
+- `reference/`: Background papers.
 
-1. **Raw tweets** (TSV.GZ, ~TB scale) → **Sentiment scores** (TSV.GZ per file)
-2. **Merged parquet** files (tweets + sentiment) → **Spatial join** with census blocks → **Tweets with GEOID20**
-3. **Tweets with GEOID20** → **DuckDB aggregation** to daily/yearly by census block
-4. **Census population** (parquet) joins with **tweet counts** → CR calculations
-5. **Block-level** aggregates → **Tract-level** (population-weighted averaging)
-6. **Tract sentiment** + **CDC PLACES** → Correlation validation
+## Key Metrics
+- **CR (Coverage Ratio)**: `tweet_count / population` at block/tract level.
+- **log2(CR)**: 0 = proportional, -1 = 50% underrepresented, +1 = 200% overrepresented.
+- **mask_low_coverage**: Filter tracts with <20 tweets before correlation analysis.
+- **Population weighting**: Use `weighted_corr()` / `weighted_spearman()` for tract-level stats.
 
 ## Important Notes
-
-- **GEOID formats**: Block IDs are 15 digits (state+county+tract+block), tract IDs are first 11 digits
-- **Population weighting**: Critical for representative statistics; use `weighted_corr()` and `weighted_spearman()` functions
-- **Parallel processing**: Set `pandarallel.initialize()` before using `.parallel_apply()`
-- **Memory considerations**: Block-level datasets are massive; use DuckDB for out-of-core processing where possible
-- **Spatial join performance**: Processing full dataset (2010-2024, ~93,574 files × 51 states) requires 900GB+ RAM and ~40-50 hours on 110 cores
-- **Spatial join output format**: Each input file generates 51 output files (one per state), e.g., `2020_10_01_00-tl_2020_06_tabblock20.parquet`
-- **Projection**: Use EPSG:5070 (NAD83/Conus Albers) for continental US visualizations; spatial joins use EPSG:4326 (WGS84)
-- remember only create/edit the files under this very current folder.
-- I am using geo conda env to work
-- I am using snakemake to connect the pipline
-- please check and keep update the Snakefile and data-pipeline-flowchart.txt if needed after you change anything
-- all the script should named starting with number to show the step order of the script
+- **GEOID formats**: Block IDs = 15 digits; tract IDs = first 11 digits of GEOID20.
+- **Projections**: Spatial joins use EPSG:4326 (WGS84); visualizations use EPSG:5070 (NAD83/Conus Albers).
+- **DuckDB**: Use for out-of-core processing on block-level data; avoid loading full datasets into pandas.
+- **Spatial join scale**: 900GB+ RAM, ~40-50 hours on 110 cores for the full 2010-2023 run.
+- **Spatial join output**: Each input file → 51 per-state parquets (e.g., `2020_10_01_00-tl_2020_06_tabblock20.parquet`).
+- **Script naming**: All scripts start with a number prefix indicating step order.
+- **Keep updated**: After any pipeline change, update `Snakefile` and `docs/data-pipeline-flowchart.txt`.
+- **Scope**: Only create or edit files within this repository directory.
 
 ## References
-- **Primary Reference**: `reference/Chai et al. - 2023 - Twitter Sentiment Geographical Index Dataset.pdf` (Scientific Data, 2023) - Validation methodology and background for the global/national sentiment index.
+- `reference/Chai et al. - 2023 - Twitter Sentiment Geographical Index Dataset.pdf` (Scientific Data, 2023) — validation methodology reference.

@@ -5,6 +5,7 @@ Based on logic from 0.3.8-test-spatial-join-example.sql.
 """
 
 import os
+import sys
 import glob
 import json
 import argparse
@@ -15,6 +16,7 @@ import time
 parser = argparse.ArgumentParser(description='Batch spatial join using DuckDB')
 parser.add_argument('--start-year', type=int, default=2010, help='Start year')
 parser.add_argument('--end-year', type=int, default=2023, help='End year')
+parser.add_argument('--month', type=int, default=None, help='Single month (1-12); if omitted, process all 12')
 parser.add_argument('--dry-run', action='store_true', help='Verify setup only')
 args = parser.parse_args()
 
@@ -34,6 +36,8 @@ TEMP_DIR = config['workspace'] + "/tmp_duckdb"
 os.makedirs(TEMP_DIR, exist_ok=True)
 # Get thread count from SLURM or default to 8
 threads = os.environ.get('SLURM_CPUS_PER_TASK', '8')
+# DuckDB memory limit (spills to temp_dir beyond this). Configurable for small per-month jobs.
+mem_limit = os.environ.get('DUCKDB_MEMORY_LIMIT', '200GB')
 
 # SQL Template
 SQL_TEMPLATE = """
@@ -42,7 +46,7 @@ SQL_TEMPLATE = """
 
 -- Configuration
 SET threads TO {threads};
-SET memory_limit TO '800GB';
+SET memory_limit TO '{mem_limit}';
 -- Use a large temporary directory for spilling to disk
 SET temp_directory TO '{temp_dir}';
 
@@ -148,18 +152,18 @@ def process_month(year, month):
     matched_files = glob.glob(input_pattern)
     if not matched_files:
         print(f"Skipping {year}-{month_str}: No files found matching pattern '{input_pattern}'")
-        return
+        return True
     
     # Output file uses zero-padded month (e.g., 2020_01.parquet)
     output_dir = os.path.join(BASE_OUTPUT_DIR, str(year))
     os.makedirs(output_dir, exist_ok=True)
     output_file = os.path.join(output_dir, f"{year}_{month_str}.parquet")
 
-    # Check if output already exists
+    # Check if output already exists -- skip so timed-out years resume
+    # from their last completed month instead of restarting at month 1.
     if os.path.exists(output_file):
-        print(f"Warning: Output file exists: {output_file}")
-        # print("Skipping...") 
-        # return # Uncomment to skip existing
+        print(f"Skipping {year}-{month_str}: output already exists ({output_file})")
+        return True
 
     # Prepare SQL
     sql_script = SQL_TEMPLATE.format(
@@ -169,7 +173,8 @@ def process_month(year, month):
         year=year,
         month=month_str,
         temp_dir=TEMP_DIR,
-        threads=threads
+        threads=threads,
+        mem_limit=mem_limit
     )
 
     # Write temp SQL file
@@ -187,9 +192,14 @@ def process_month(year, month):
         
         duration = time.time() - start_time
         print(f"✓ Completed {year}-{month_str} in {duration:.2f} seconds")
-        
+        return True
+
     except subprocess.CalledProcessError as e:
         print(f"✗ Failed {year}-{month_str}: {e}")
+        # Remove any partial/empty output so a rerun doesn't skip a bad file
+        if os.path.exists(output_file):
+            os.remove(output_file)
+        return False
     finally:
         # Cleanup
         if os.path.exists(temp_sql_path):
@@ -202,13 +212,18 @@ def main():
     start_total = time.time()
     
     years = range(args.start_year, args.end_year + 1)
-    months = range(1, 13)
+    months = [args.month] if args.month else range(1, 13)
 
+    failed = []
     for year in years:
         for month in months:
-            process_month(year, month)
-            
+            if not process_month(year, month):
+                failed.append(f"{year}-{month:02d}")
+
     print(f"\nAll tasks finished in {time.time() - start_total:.2f} seconds")
+    if failed:
+        print(f"FAILED months: {failed}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
