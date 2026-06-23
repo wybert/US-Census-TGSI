@@ -40,11 +40,11 @@ The proliferation of social media, combined with advances in Natural Language Pr
 
 However, many social, economic, and policy dynamics occur at much finer geographic scales within countries, particularly within diverse nations like the United States. County-level aggregation can mask significant intra-county heterogeneity. To address this, we develop a new, publicly available Twitter sentiment index aggregated at the US census tract level. Census tracts are designed to be relatively homogeneous units with respect to population characteristics, economic status, and living conditions, making them a highly relevant scale for local analysis. This US Census Tract Twitter Sentiment Geographical Index (US-CT-TSGI) utilizes the same core sentiment analysis methodology as the global TSGI but applies a more granular geocoding process specific to the US administrative boundaries. This dataset provides researchers with a powerful tool to investigate neighborhood-level variations in expressed sentiment and explore their connections to local events, demographic characteristics, environmental factors, and policy interventions.
 
-Our primary contribution is the creation of the first open-source, daily, monthly and yearly Twitter sentiment database at the US census tract level, covering  8.18 million tracts across the nation from 2010 to 2023. This dataset offers:
+Our primary contribution is the creation of the first open-source, daily, monthly and yearly Twitter sentiment database resolved to the US census block level (8.18 million blocks nationwide), readily aggregable to census tracts, covering approximately 2.8 billion geotagged tweets from 2010 to 2023. This dataset offers:
 
 \begin{enumerate}
-    \item High Granularity: Sentiment data resolved at the census tract level.
-    \item Temporal Frequency: Daily updates enabling the analysis of short-term fluctuations
+    \item High Granularity: Sentiment data resolved to the census block level (the finest US census geography), enabling aggregation to tracts or any higher unit.
+    \item Temporal Frequency: Daily, monthly, and yearly resolution enabling the analysis of short-term fluctuations.
     \item Consistent Methodology: Built upon a validated BERT-based sentiment model \cite{chaiTwitterSentimentGeographical2023a}, ensuring methodological continuity with broader-scale indices.
 \end{enumerate}
 
@@ -61,7 +61,7 @@ We anticipate this dataset will be a valuable resource for urban studies, public
 \subsection*{Data Collection, Cleaning and Sentiment Enhancing}
 
 
-We apply the same Twitter data archive, preprocessing steps and sentiment analysis methods as detailed in our previous work \cite{chaiTwitterSentimentGeographical2023a} to ensure data quality and consistency with the sentiment model training. In addition, as we focus on the US, we utilized tweets identified as originating within the United States from XX, to XX, encompassing approximately XX billion geotagged tweets after initial filtering and cleaning.
+We apply the same Twitter data archive, preprocessing steps and sentiment analysis methods as detailed in our previous work \cite{chaiTwitterSentimentGeographical2023a} to ensure data quality and consistency with the sentiment model training. In addition, as we focus on the US, we utilized tweets identified as originating within the United States from 2010 to 2023, encompassing approximately 2.8 billion geotagged tweets after initial filtering and cleaning. Volume is negligible in 2010--2011 (fewer than 10$^3$ tweets) and substantive coverage begins in 2012.
 
 
 \subsection*{Aggregating Sentiment Scores}
@@ -84,7 +84,7 @@ where $S_i$ is the sentiment score and $C_i$ is the spatial confidence of tweet 
 
 \section*{Data Records}
 
-The US Census Tract Twitter Sentiment Geographical Index (US-CT-TSGI) provides two levels of data: the raw spatially joined tweet archive (Table~\ref{tab:census_tgsi}) and the aggregated sentiment statistics at the census block level (Table~\ref{tab:agg_sentiment}). The datasets can be accessed at \url{XXX}.
+The US Census Tract Twitter Sentiment Geographical Index (US-CT-TSGI) provides two levels of data: the raw spatially joined tweet archive (Table~\ref{tab:census_tgsi}) and the aggregated sentiment statistics at the census block level (Table~\ref{tab:agg_sentiment}). The aggregated statistics are organized as one Parquet file per temporal granularity and year (\texttt{\{daily,monthly,yearly\}\_\{year\}.parquet}, 42 files spanning 2010--2023). The dataset is deposited at figshare (\url{https://doi.org/XX.XXXXX/figshare.XXXXXXX}; DOI to be assigned on publication).
 
 \begin{table}[htbp]
 \centering
@@ -119,21 +119,23 @@ A critical challenge in social media-based indices is the potential for geograph
 \[
 CR = \frac{\text{Tweet Count}}{\text{Population}}
 \]
-We visualize the spatial distribution of $log_2(CR)$ to identify areas of over-representation (positive values) and under-representation (negative values). Additionally, we computed the Gini coefficient and plotted the Lorenz curve to quantify the inequality of tweet distribution relative to the population.
-[Insert Figure: Lorenz Curve and Gini Coefficient Result]
-[Insert Figure: National Map of log2(CR)]
+We visualize the spatial distribution of $\log_2(CR)$ to identify areas of over-representation (positive values) and under-representation (negative values). Across the full 2010--2023 period, tweets were observed in 6.47 million of the 8.18 million census blocks, covering 83,826 of the 84,414 census tracts with land area (99.3\%); restricting to tracts with at least 20 tweets retains the large majority of tracts (Figure~\ref{fig:log2cr_map}). The spatial pattern shows the expected over-representation of dense urban cores and tourist destinations and under-representation of sparsely populated rural areas.
+
+To quantify the inequality of the tweet distribution relative to population, we computed the Gini coefficient and the Lorenz curve (Figure~\ref{fig:lorenz}). Over the full period the Gini coefficient is 0.79, and for the single year 2020 it is 0.97, indicating that tweet volume is substantially more concentrated than population --- a well-known property of social-media data that users should account for, for example by population-weighting or by masking low-coverage units (we flag tracts with fewer than 20 tweets via the \texttt{mask\_low\_coverage} field).
 
 \subsection*{Temporal Stability and Data Consistency}
 
-To verify the consistency of our sentiment aggregation strategy, we examined the temporal trends of tweet volumes and average sentiment scores from 2012 to 2023. We also compared the sentiment distributions derived from the 'Strict' (confidence=1.0) and 'All' tiers to ensure that including lower-confidence spatial matches does not introduce systematic bias.
-[Insert Figure: Time Series Plot of Tweet Counts and Sentiment]
+We examined the national time series of tweet volume and tweet-weighted mean sentiment from 2010 to 2023, and compared the four confidence tiers (Figure~\ref{fig:temporal}). Annual tweet volume varies considerably (from $\sim$32 million in 2016 to $\sim$735 million in 2014), reflecting changes in the underlying collection coverage of the geotagged-tweet archive over time rather than true changes in posting activity; the tweet-weighted mean sentiment is more stable, ranging from 0.54 to 0.71 across years.
+
+The comparison of confidence tiers reveals a structural change in the data that users should be aware of. From 2012 through 2017, essentially all geotagged tweets carried GPS-precise coordinates (the `Strict' tier accounts for 100\% of volume), so the four tiers are identical. Following Twitter's removal of precise (GPS) geotagging in June 2019 \cite{huUnderstandingRemovalPrecise2020}, the GPS-precise share collapses to roughly 30\% in 2018 and 7--11\% from 2019 onward, with the remainder being place-tagged tweets resolved to administrative or point-of-interest centroids. After this transition the `Strict' subset is not only small but also non-representative: its tweet-weighted mean sentiment runs $\sim$0.10 higher than the `All' tier. This motivates our multi-tier design and the confidence-weighted mean: we recommend the confidence-weighted `All' tier for time series spanning the 2019 transition, and caution against treating the post-2019 `Strict' subset as a continuation of the pre-2019 GPS-based series.
 
 \subsection*{Correlation with Public Health Indicators (External Validity)}
 
 As a measure of external validity, we examined the relationship between our Twitter-derived sentiment indices and community-level mental health outcomes. We utilized the CDC PLACES dataset (Local Data for Better Health), specifically the crude prevalence of "Mental health not good for $\ge$14 days" (MHLTH) at the census tract level.
 
-We aggregated our block-level sentiment data to the tract level (population-weighted) for the years 2020, 2021, and 2022 to match the available CDC data. We then calculated the Pearson and Spearman correlation coefficients between the annual average sentiment scores and the MHLTH prevalence rates. A significant negative correlation would support the validity of the Twitter sentiment index as a proxy for subjective well-being.
-[Insert Table/Figure: Correlation Coefficients and Scatter Plots]
+We aggregated our block-level sentiment to the tract level for the years 2020, 2021, and 2022 to match the available CDC data, and computed Pearson and Spearman correlations (both unweighted and population-weighted) between annual mean sentiment and MHLTH prevalence (Table~\ref{tab:correlation}, Figure~\ref{fig:correlation}). For all three years the correlation is negative and highly statistically significant: Pearson $r = -0.049$ in 2020 ($N = 52{,}589$, $p = 7\times10^{-29}$, 95\% CI $[-0.057, -0.040]$), $-0.041$ in 2021 ($N = 48{,}136$, $p = 2\times10^{-19}$), and $-0.041$ in 2022 ($N = 50{,}349$, $p = 2\times10^{-20}$); Spearman coefficients are of the same sign and significance, and population weighting leaves the estimates essentially unchanged. Consistent with prior ecological associations between aggregate social-media sentiment and well-being, the effect sizes are modest, as expected when comparing noisy, self-selected social-media expression against survey-based prevalence at fine spatial resolution.
+
+As a discriminant (placebo) check, we repeated the analysis against an indicator with no \textit{a priori} link to expressed sentiment --- the crude prevalence of recent mammography use (MAMMOUSE). This control yields \textit{positive} correlations of $+0.04$ to $+0.07$ across the three years, opposite in sign to the mental-distress association. The combination of a significant negative correlation with mental distress and a non-negative correlation with the placebo indicator supports the convergent and divergent validity of the index as a proxy for community-level subjective well-being, while underscoring that it should be used as an aggregate signal rather than a precise predictor.
 
 \section*{Usage Notes}
 
@@ -141,9 +143,16 @@ We aggregated our block-level sentiment data to the tract level (population-weig
 
 % For studies involving privacy or safety controls on public access to the data, this section should describe in detail these controls, including how authors can apply to access the data, what criteria will be used to determine who may access the data, and any limitations on data use.
 
-Our efforts have resulted in the development of the most extensive archive comprising two billion tweets enriched with country, state, and census-level variables. It encompasses tweet and user identification records, along with census variables, encompassing over two billion geo-tagged tweets in the U.S. from January 2012 to July 2023. As far as our knowledge extends, this dataset marks the pioneering instance of a geography-enriched tweet collection accessible at such a scale and granularity. However, our dataset has some limitations and we recommend reading this section in detail before using this dataset.
+This dataset comprises approximately 2.8 billion geo-tagged tweets in the U.S. from 2010 to 2023, enriched with census-block geography and BERT-based sentiment, and aggregated to daily, monthly, and yearly statistics at the census-block level. To our knowledge it is the first geography-enriched US tweet collection released at this scale and granularity. The block-level aggregates can be rolled up to census tracts (first 11 digits of \texttt{GEOID20}), counties, or states by re-aggregating tweet counts and recomputing tweet- or confidence-weighted sentiment; the data are stored as Parquet and are efficiently queried with tools such as DuckDB, pandas, or polars without loading the full corpus into memory.
 
-% list the limatations
+We recommend that users observe the following caveats:
+\begin{enumerate}
+    \item \textbf{Geographic non-representativeness.} Tweet volume is far more spatially concentrated than population (Gini $\approx 0.79$). Sparsely populated and rural areas are under-sampled. We recommend population weighting and masking low-coverage units (the \texttt{mask\_low\_coverage} field flags tracts with fewer than 20 tweets); coverage-ratio fields are provided to support reweighting.
+    \item \textbf{2019 geotagging regime change.} Following Twitter's June 2019 removal of precise geotagging \cite{huUnderstandingRemovalPrecise2020}, the data shift from predominantly GPS-precise to predominantly place-tagged tweets. The confidence tiers and \texttt{confidence} score capture this; for analyses spanning the transition, use the confidence-weighted `All' tier rather than the `Strict' subset.
+    \item \textbf{Variable temporal coverage.} Annual tweet volume reflects the collection coverage of the source archive and varies markedly between years (Figure~\ref{fig:temporal}); 2010--2011 are too sparse for reliable estimates and should be excluded.
+    \item \textbf{Demographic skew.} Twitter users are not demographically representative of the general population; expressed sentiment reflects the posting population, not all residents, and should be interpreted as an aggregate, relative signal rather than an absolute measure of well-being.
+    \item \textbf{Sentiment model scope.} Scores derive from the BERT-based multilingual model of \cite{chaiTwitterSentimentGeographical2023a}; sarcasm, code-switching, and domain-specific language remain challenging, as for all automated sentiment methods.
+\end{enumerate}
 
 
 \section*{Code availability}
@@ -226,6 +235,49 @@ All authors declare that they have no conflicts of interest. Authors used ChatGP
 %     \caption{US County Boundaries.}
 %     \label{fig:us_boundaries}
 % \end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{figures/log2CR_map_all_years.png}
+    \caption{Coverage Ratio at the census-tract level over 2010--2023, shown as $\log_2(CR)$ where $CR$ is the tweet count divided by population, normalized so that $0$ denotes proportional representation. Positive (warm) values indicate over-representation and negative (cool) values under-representation; tracts with fewer than 20 tweets are masked. Urban cores are over-represented while sparse rural areas are under-represented.}
+    \label{fig:log2cr_map}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.6\linewidth]{figures/lorenz_curve.png}
+    \caption{Lorenz curve of tweet volume against population across census tracts (2010--2023). The departure from the line of equality corresponds to a Gini coefficient of 0.79, indicating that tweets are substantially more spatially concentrated than population.}
+    \label{fig:lorenz}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{figures/temporal_stability.png}
+    \caption{National annual tweet volume (bars, left axis) and tweet-weighted mean sentiment by confidence tier (lines, right axis), 2010--2023. The four tiers coincide through 2017 (all tweets GPS-precise) and diverge after Twitter's June 2019 removal of precise geotagging \cite{huUnderstandingRemovalPrecise2020}, when GPS-precise tweets fall below 11\% of volume and the `Strict' tier becomes a small, higher-sentiment, non-representative subset.}
+    \label{fig:temporal}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{figures/scatter_mhlth_2020.png}
+    \caption{Tract-level mean Twitter sentiment versus CDC PLACES prevalence of frequent mental distress (MHLTH) for 2020 (points subsampled for legibility; line is the population-weighted decile curve). The relationship is negative and highly significant; per-year coefficients are reported in Table~\ref{tab:correlation}.}
+    \label{fig:correlation}
+\end{figure}
+
+\begin{table}[htbp]
+\centering
+\caption{Correlation between tract-level mean Twitter sentiment and CDC PLACES frequent-mental-distress prevalence (MHLTH), with a mammography-use (MAMMOUSE) discriminant control. $r$ = Pearson, $\rho$ = Spearman; subscript $w$ = population-weighted. All MHLTH correlations have $p < 10^{-6}$.}
+\label{tab:correlation}
+\begin{tabular}{lrrrrrr}
+\toprule
+Year & $N$ & $r$ & $r_w$ & $\rho$ & $r$ (discriminant) & $p$ \\
+\midrule
+2020 & 52,589 & $-0.049$ & $-0.048$ & $-0.043$ & $+0.065$ & $7\times10^{-29}$ \\
+2021 & 48,136 & $-0.041$ & $-0.038$ & $-0.030$ & $+0.039$ & $2\times10^{-19}$ \\
+2022 & 50,349 & $-0.041$ & $-0.039$ & $-0.023$ & $+0.048$ & $2\times10^{-20}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 % FIXME: FIX the table here
 \begin{table}[htbp]

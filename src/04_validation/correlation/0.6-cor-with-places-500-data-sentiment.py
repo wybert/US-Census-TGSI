@@ -12,6 +12,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
+from scipy import stats
 import json
 
 # Load configuration
@@ -101,13 +102,23 @@ for year in years:
     pear_w_disc = weighted_corr(df["sent_mean"], df["disc"], df["pop"])
     spear_w_disc = weighted_spearman(df["sent_mean"], df["disc"], df["pop"])
 
-    print(f"N={len(df):,}   Pearson={pear_u:.3f} (w={pear_w:.3f})   Spearman={spear_u:.3f} (w={spear_w:.3f})")
+    # Significance (unweighted) for the primary MHLTH correlation.
+    r_p, p_pearson = stats.pearsonr(df["sent_mean"], df["mhlth"])
+    r_s, p_spearman = stats.spearmanr(df["sent_mean"], df["mhlth"])
+    # 95% CI for Pearson r via Fisher z-transform.
+    n = len(df)
+    z = np.arctanh(r_p); se = 1.0 / np.sqrt(n - 3)
+    ci_lo, ci_hi = np.tanh(z - 1.96 * se), np.tanh(z + 1.96 * se)
+
+    print(f"N={n:,}   Pearson={pear_u:.3f} (w={pear_w:.3f}) p={p_pearson:.2e} CI=[{ci_lo:.3f},{ci_hi:.3f}]   "
+          f"Spearman={spear_u:.3f} (w={spear_w:.3f}) p={p_spearman:.2e}")
     print(f"Discriminant → Pearson={pear_u_disc:.3f} (w={pear_w_disc:.3f})   Spearman={spear_u_disc:.3f} (w={spear_w_disc:.3f})")
 
     rows.append({
-        "year": year, "N": len(df),
+        "year": year, "N": n,
         "pearson": pear_u, "pearson_w": pear_w,
-        "spearman": spear_u, "spearman_w": spear_w,
+        "pearson_p": p_pearson, "pearson_ci_lo": ci_lo, "pearson_ci_hi": ci_hi,
+        "spearman": spear_u, "spearman_w": spear_w, "spearman_p": p_spearman,
         "pearson_disc": pear_u_disc, "pearson_disc_w": pear_w_disc,
         "spearman_disc": spear_u_disc, "spearman_disc_w": spear_w_disc
     })
