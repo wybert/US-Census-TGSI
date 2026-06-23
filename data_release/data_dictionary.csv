@@ -1,0 +1,54 @@
+variable,type,description
+GEOID20,string,15-digit Census Block GEOID (2020 vintage). Tract = first 11 digits; county = first 5; state = first 2.
+year,int,Calendar year (yearly and monthly files).
+month,int,Calendar month 1-12 (monthly files).
+date_val,date,Calendar date (daily files).
+all_tweet_count,int,Number of tweets in the tier for this block-period. Tier 'all': All tweets regardless of spatial confidence.
+all_user_count,int,Number of unique users in the tier. Tier 'all': All tweets regardless of spatial confidence.
+all_sentiment_mean,float,"Mean sentiment score (0=negative, 1=positive). Tier 'all': All tweets regardless of spatial confidence."
+all_sentiment_std,float,Standard deviation of sentiment. Tier 'all': All tweets regardless of spatial confidence.
+all_sentiment_min,float,Minimum sentiment. Tier 'all': All tweets regardless of spatial confidence.
+all_sentiment_max,float,Maximum sentiment. Tier 'all': All tweets regardless of spatial confidence.
+all_sentiment_10q,float,10th percentile of sentiment. Tier 'all': All tweets regardless of spatial confidence.
+all_sentiment_25q,float,25th percentile of sentiment. Tier 'all': All tweets regardless of spatial confidence.
+all_sentiment_50q,float,Median sentiment. Tier 'all': All tweets regardless of spatial confidence.
+all_sentiment_75q,float,75th percentile of sentiment. Tier 'all': All tweets regardless of spatial confidence.
+all_sentiment_90q,float,90th percentile of sentiment. Tier 'all': All tweets regardless of spatial confidence.
+all_confidence_mean,float,Mean spatial-join confidence of tweets in the tier. Tier 'all': All tweets regardless of spatial confidence.
+medium_tweet_count,int,Number of tweets in the tier for this block-period. Tier 'medium': Tweets with confidence >= 0.5.
+medium_user_count,int,Number of unique users in the tier. Tier 'medium': Tweets with confidence >= 0.5.
+medium_sentiment_mean,float,"Mean sentiment score (0=negative, 1=positive). Tier 'medium': Tweets with confidence >= 0.5."
+medium_sentiment_std,float,Standard deviation of sentiment. Tier 'medium': Tweets with confidence >= 0.5.
+medium_sentiment_min,float,Minimum sentiment. Tier 'medium': Tweets with confidence >= 0.5.
+medium_sentiment_max,float,Maximum sentiment. Tier 'medium': Tweets with confidence >= 0.5.
+medium_sentiment_10q,float,10th percentile of sentiment. Tier 'medium': Tweets with confidence >= 0.5.
+medium_sentiment_25q,float,25th percentile of sentiment. Tier 'medium': Tweets with confidence >= 0.5.
+medium_sentiment_50q,float,Median sentiment. Tier 'medium': Tweets with confidence >= 0.5.
+medium_sentiment_75q,float,75th percentile of sentiment. Tier 'medium': Tweets with confidence >= 0.5.
+medium_sentiment_90q,float,90th percentile of sentiment. Tier 'medium': Tweets with confidence >= 0.5.
+medium_confidence_mean,float,Mean spatial-join confidence of tweets in the tier. Tier 'medium': Tweets with confidence >= 0.5.
+high_tweet_count,int,Number of tweets in the tier for this block-period. Tier 'high': Tweets with confidence >= 0.8.
+high_user_count,int,Number of unique users in the tier. Tier 'high': Tweets with confidence >= 0.8.
+high_sentiment_mean,float,"Mean sentiment score (0=negative, 1=positive). Tier 'high': Tweets with confidence >= 0.8."
+high_sentiment_std,float,Standard deviation of sentiment. Tier 'high': Tweets with confidence >= 0.8.
+high_sentiment_min,float,Minimum sentiment. Tier 'high': Tweets with confidence >= 0.8.
+high_sentiment_max,float,Maximum sentiment. Tier 'high': Tweets with confidence >= 0.8.
+high_sentiment_10q,float,10th percentile of sentiment. Tier 'high': Tweets with confidence >= 0.8.
+high_sentiment_25q,float,25th percentile of sentiment. Tier 'high': Tweets with confidence >= 0.8.
+high_sentiment_50q,float,Median sentiment. Tier 'high': Tweets with confidence >= 0.8.
+high_sentiment_75q,float,75th percentile of sentiment. Tier 'high': Tweets with confidence >= 0.8.
+high_sentiment_90q,float,90th percentile of sentiment. Tier 'high': Tweets with confidence >= 0.8.
+high_confidence_mean,float,Mean spatial-join confidence of tweets in the tier. Tier 'high': Tweets with confidence >= 0.8.
+strict_tweet_count,int,Number of tweets in the tier for this block-period. Tier 'strict': Tweets with confidence = 1.0 (exact/GPS match).
+strict_user_count,int,Number of unique users in the tier. Tier 'strict': Tweets with confidence = 1.0 (exact/GPS match).
+strict_sentiment_mean,float,"Mean sentiment score (0=negative, 1=positive). Tier 'strict': Tweets with confidence = 1.0 (exact/GPS match)."
+strict_sentiment_std,float,Standard deviation of sentiment. Tier 'strict': Tweets with confidence = 1.0 (exact/GPS match).
+strict_sentiment_min,float,Minimum sentiment. Tier 'strict': Tweets with confidence = 1.0 (exact/GPS match).
+strict_sentiment_max,float,Maximum sentiment. Tier 'strict': Tweets with confidence = 1.0 (exact/GPS match).
+strict_sentiment_10q,float,10th percentile of sentiment. Tier 'strict': Tweets with confidence = 1.0 (exact/GPS match).
+strict_sentiment_25q,float,25th percentile of sentiment. Tier 'strict': Tweets with confidence = 1.0 (exact/GPS match).
+strict_sentiment_50q,float,Median sentiment. Tier 'strict': Tweets with confidence = 1.0 (exact/GPS match).
+strict_sentiment_75q,float,75th percentile of sentiment. Tier 'strict': Tweets with confidence = 1.0 (exact/GPS match).
+strict_sentiment_90q,float,90th percentile of sentiment. Tier 'strict': Tweets with confidence = 1.0 (exact/GPS match).
+strict_confidence_mean,float,Mean spatial-join confidence of tweets in the tier. Tier 'strict': Tweets with confidence = 1.0 (exact/GPS match).
+all_weighted_sentiment_mean,float,Confidence-weighted mean sentiment = sum(score*confidence)/sum(confidence) over all tweets.
