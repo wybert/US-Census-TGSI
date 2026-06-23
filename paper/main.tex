@@ -19,7 +19,7 @@
 
 \begin{abstract}
 
-Understanding subjective well-being (SWB) at fine geographic scales is increasingly important for policy-making and social science research. Building upon established methodologies for deriving sentiment from social media, we introduce a high-resolution Twitter Sentiment Index specifically for the United States at the census tract level. This dataset leverages deep-learning-based natural language processing techniques applied to a large corpus of geotagged tweets originating from the US from 2010 to 2023. The resulting open-source dataset provides daily, monthly, and yearly sentiment scores and tweet counts aggregated to 8.18 million US census blocks, offering unprecedented granularity for examining local variations in expressed sentiment and their potential SWB implications. This resource complements traditional survey methods by providing timely, high-frequency data suitable for studying the impacts of local events, policies, and socioeconomic conditions on public mood.
+Understanding subjective well-being (SWB) at fine geographic scales is increasingly important for policy and social science, yet survey-based measures are constrained in temporal frequency, spatial granularity, and cost. We present the US Census-Tract Twitter Sentiment Geographical Index (US-CT-TSGI), a high-resolution sentiment dataset for the United States derived from approximately 2.8 billion geotagged tweets posted between 2010 and 2023. Tweet-level sentiment, scored with a BERT-based model, is assigned to 2020 US Census blocks by point-in-polygon spatial join and aggregated into daily, monthly, and yearly statistics for 8.18 million census blocks --- the finest US census geography, readily aggregated to tracts, counties, or states. To accommodate the spatial uncertainty of tweet locations, we release four confidence-stratified tiers together with a confidence-weighted sentiment mean. We technically validate the dataset along three dimensions: geographic representativeness relative to population (coverage ratio and Gini index), temporal characteristics including the effect of Twitter's 2019 removal of precise geotagging, and external convergence with CDC PLACES community mental-health prevalence. The resulting open dataset complements traditional surveys with timely, high-frequency, neighborhood-scale measures of expressed sentiment for research in public health, urban studies, economics, and political science.
 
 \end{abstract}
 \begin{document}
@@ -100,9 +100,10 @@ date\_val / year / month & Date/Int & Temporal timestamp (Day, Year, or Month) \
 \{tier\}\_user\_count & Integer & Number of unique users in this tier \\
 \{tier\}\_sentiment\_mean & Float & Mean sentiment score \\
 \{tier\}\_sentiment\_std & Float & Standard deviation of sentiment scores \\
+\{tier\}\_sentiment\_min / max & Float & Minimum and maximum sentiment score \\
 \{tier\}\_sentiment\_\{p\}q & Float & Sentiment quantiles (p $\in$ \{10, 25, 50, 75, 90\}) \\
-all\_weighted\_sentiment\_mean & Float & Confidence-weighted mean sentiment score \\
-all\_confidence\_mean & Float & Average spatial confidence score of tweets in the block \\
+\{tier\}\_confidence\_mean & Float & Mean spatial-join confidence of tweets in this tier \\
+all\_weighted\_sentiment\_mean & Float & Confidence-weighted mean sentiment score (all tier) \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -174,8 +175,7 @@ We extend our gratitude to Department of Government  at Harvard University for p
 
 \section*{Author contributions statement}
 
-Must include all authors, identified by initials, for example:
-A.A. conceived the experiment(s), A.A. and B.A. conducted the experiment(s), C.A. and D.A. analysed the results. All authors reviewed the manuscript.
+X.F. conceived and designed the dataset and the processing pipeline, performed the data acquisition, sentiment scoring, spatial join, and aggregation, conducted the technical validation, and wrote the manuscript. D.J. and J.H. contributed to data curation and validation and to manuscript revision. All authors reviewed and approved the final manuscript.
 
 \section*{Competing interests} (mandatory statement)
 
@@ -279,22 +279,30 @@ Year & $N$ & $r$ & $r_w$ & $\rho$ & $r$ (discriminant) & $p$ \\
 \end{tabular}
 \end{table}
 
-% FIXME: FIX the table here
 \begin{table}[htbp]
 \centering
-\caption{Geotweet Census Archive}
+\caption{Spatially joined tweet archive: per-tweet records (one row per geotagged tweet) produced by the point-in-polygon join of tweets to 2020 Census blocks.}
 \label{tab:census_tgsi}
 \begin{tabular}{llp{8cm}}
 \toprule
-\textbf{Entry} & \textbf{Variable} & \textbf{Description} \\
+\textbf{Variable} & \textbf{Type} & \textbf{Description} \\
 \midrule
-1 & message\_id & Tweet ID \\
-2 & user\_id & User ID number \\
-3 & fips & County FIPS code \\
-4 & county & County name \\
-5 & state & State abbreviation \\
-6 & GEOID20 & Census block GEOID \\
-7 & sentiment\_score & Sentiment score (0--1) calculated using BERT model \\
+message\_id & String & Unique tweet identifier \\
+user\_id & String & Unique user identifier \\
+date & String & Tweet timestamp \\
+latitude & Float & Tweet latitude (WGS84, EPSG:4326) \\
+longitude & Float & Tweet longitude (WGS84, EPSG:4326) \\
+sentiment & Float & BERT-based sentiment score (0 = negative, 1 = positive) \\
+GPS & Boolean & Whether the tweet carried precise GPS coordinates \\
+spatialerror & Float & Reported location uncertainty radius (meters) \\
+GEOID20 & String & 15-digit Census Block identifier (2020 vintage) \\
+STATEFP20 & String & 2-digit state FIPS code \\
+COUNTYFP20 & String & 3-digit county FIPS code \\
+TRACTCE20 & String & 6-digit census tract code \\
+BLOCKCE20 & String & 4-digit census block code \\
+block\_area\_m2 & Float & Area of the matched census block (m\textsuperscript{2}) \\
+block\_diameter\_m & Float & Approximate diameter of the matched block (m) \\
+confidence & Float & Spatial-join confidence (0--1); 1.0 = exact/GPS match \\
 \bottomrule
 \end{tabular}
 \end{table}
