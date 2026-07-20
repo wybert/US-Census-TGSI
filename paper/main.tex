@@ -93,6 +93,7 @@ To account for the spatial uncertainty of tweet locations, we implemented a mult
     \item \textbf{Medium}: Includes tweets with confidence $\ge$ 0.5.
     \item \textbf{All}: Includes all tweets regardless of confidence.
 \end{enumerate}
+Each tier is computed as an independent filter-then-aggregate pass over the tweets in a given block-time unit, and the four resulting tables are left-joined on the block-time key (with the `All' tier, which is present for every unit, as the base). Consequently a block-time unit with, e.g., no GPS-exact tweets will have populated `all\_*' fields but null `strict\_*' fields, rather than a zero or an absent row; this should be interpreted as no tweets qualifying for that tier, not as missing data.
 
 For each tier, we calculated the tweet count, unique user count, and descriptive statistics of the sentiment scores (mean, standard deviation, minimum, maximum, and percentiles: 10th, 25th, 50th, 75th, 90th). Additionally, for the 'All' tier, we computed a confidence-weighted mean sentiment score:
 \[
