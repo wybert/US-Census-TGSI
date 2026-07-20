@@ -64,11 +64,29 @@ We anticipate this dataset will be a valuable resource for urban studies, public
 We apply the same Twitter data archive, preprocessing steps and sentiment analysis methods as detailed in our previous work \cite{chaiTwitterSentimentGeographical2023a} to ensure data quality and consistency with the sentiment model training. In addition, as we focus on the US, we utilized tweets identified as originating within the United States from 2010 to 2023, encompassing approximately 2.8 billion geotagged tweets after initial filtering and cleaning. Volume is negligible in 2010--2011 (fewer than 10$^3$ tweets) and substantive coverage begins in 2012.
 
 
+\subsection*{Spatial Join and Confidence Scoring}
+
+Tweets were geolocated to U.S. census blocks (the finest granularity of census geography, 2020 TIGER/Line boundaries) via a point-in-polygon spatial join on tweet coordinates (EPSG:4326), assigning each tweet the 15-digit GEOID20 of its containing block.
+
+Geotagged tweets vary in positional precision: some carry device-reported GPS coordinates, while others are resolved from a place or point-of-interest tag to a centroid, with an associated location-uncertainty radius (`spatialerror`, in meters). To quantify how much a tweet's assigned block should be trusted given this uncertainty, we compute a per-tweet spatial-join confidence score $C_i \in \{1.0, 0.8, 0.5, 0.3, 0.15, 0.05\}$ by comparing `spatialerror` against the diameter of the matched block, $d$:
+\[
+C_i =
+\begin{cases}
+1.00 & \text{GPS-precise, or spatialerror} < 50\text{m} \\
+0.80 & \text{spatialerror} < d/2 \\
+0.50 & \text{spatialerror} < d \\
+0.30 & \text{spatialerror} < 2d \\
+0.15 & \text{spatialerror} < 1000\text{m} \\
+0.05 & \text{otherwise}
+\end{cases}
+\]
+Because block size varies enormously (dense urban blocks vs.\ large rural blocks), confidence is scaled relative to the matched block's own diameter rather than a fixed distance: a given uncertainty radius is more likely to place a tweet outside its assigned block when that block is small, and less likely when the block is large. GPS-precise tweets, or those with sub-50m uncertainty, receive the maximum confidence of 1.0 regardless of block size.
+
 \subsection*{Aggregating Sentiment Scores}
 
-To ensure accurate spatial sentiment analysis at the neighborhood level, tweets were first geolocated to U.S. census blocks (the finest granularity of census geography) using TIGER/Line boundary data. Tweet-level sentiment scores (ranging from 0 to 1) were then aggregated to the census block level (identified by the 15-digit GEOID20) on daily, monthly, and yearly bases.
+Tweet-level sentiment scores (ranging from 0 to 1) were aggregated to the census block level (identified by GEOID20) on daily, monthly, and yearly bases.
 
-To account for the spatial uncertainty of tweet locations, we implemented a multi-tier aggregation strategy based on the `confidence` score derived from the spatial join process. We generated four sets of statistics for each block-time unit:
+To account for the spatial uncertainty of tweet locations, we implemented a multi-tier aggregation strategy based on the confidence score defined above. We generated four sets of statistics for each block-time unit:
 \begin{enumerate}
     \item \textbf{Strict}: Includes only tweets with a confidence score of 1.0 (exact match).
     \item \textbf{High}: Includes tweets with confidence $\ge$ 0.8.
