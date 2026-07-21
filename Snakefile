@@ -347,27 +347,32 @@ rule spatial_representation_2020:
         /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} --input {input.cr_data} --output {output} > {log} 2>&1
         """
 
-rule validation_histogram:
-    """
-    Generate log2CR histogram and map visualizations
-    """
-    input:
-        script="src/04_validation/representativeness/04_plot_histogram.py",
-        geo_data=config['workspace'] + "/data/census_tracts_merged_shifted_geo.parquet",
-        config="setting.json"
-    output:
-        "outputs/validation/log2CR_by_census_tract.png"
-    log:
-        "outputs/logs/validation_histogram.log"
-    resources:
-        cpus=4,
-        mem_mb=32000,
-        runtime=60,
-        partition="shared"
-    shell:
-        """
-        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
-        """
+# rule validation_histogram: disabled -- its output (log2CR_by_census_tract.png,
+# the continuous-colormap map) is not used in the manuscript; the classified
+# map from validation_classification (05_plot_maps_classified.py) is the
+# figure actually shown. Script kept at src/04_validation/representativeness/
+# 04_plot_histogram.py for reference if wanted standalone later.
+# rule validation_histogram:
+#     """
+#     Generate log2CR histogram and map visualizations
+#     """
+#     input:
+#         script="src/04_validation/representativeness/04_plot_histogram.py",
+#         geo_data=config['workspace'] + "/data/census_tracts_merged_shifted_geo.parquet",
+#         config="setting.json"
+#     output:
+#         "outputs/validation/log2CR_by_census_tract.png"
+#     log:
+#         "outputs/logs/validation_histogram.log"
+#     resources:
+#         cpus=4,
+#         mem_mb=32000,
+#         runtime=60,
+#         partition="shared"
+#     shell:
+#         """
+#         /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
+#         """
 
 rule temporal_stability:
     """
@@ -539,33 +544,39 @@ rule correlation_analysis:
         /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
         """
 
-rule correlation_plots:
-    """
-    Generate enhanced correlation plots with LOWESS smoothing.
-    Outputs are named distinctly from correlation_analysis's (0.6-cor-with-
-    places-500-data-sentiment.py) so the two rules can never silently
-    overwrite each other regardless of execution order.
-    """
-    input:
-        script="src/04_validation/correlation/0.6.2-cor-p-value-and-plot.py",
-        data=config['workspace'] + "/data/sentiment_places_data_joined.parquet",
-        config="setting.json"
-    output:
-        "outputs/correlation/facet_scatter_lowess_all_years.png",
-        "outputs/correlation/places_correlation_summary_lowess_check.csv",
-        expand("outputs/correlation/scatter_sent_vs_MHLTH_{year}_lowess.png",
-               year=ANALYSIS_YEARS)
-    log:
-        "outputs/logs/correlation_plots.log"
-    resources:
-        cpus=4,
-        mem_mb=32000,
-        runtime=60,
-        partition="shared"
-    shell:
-        """
-        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
-        """
+# rule correlation_plots: disabled -- 0.6.2's outputs (LOWESS-smoothed
+# scatters, facet grid, and a second independent weighted-correlation
+# implementation) are a cross-check only, not cited in the manuscript. We
+# confirmed the cross-check matched 0.6's results exactly before disabling.
+# Script kept at src/04_validation/correlation/0.6.2-cor-p-value-and-plot.py
+# for reference if wanted standalone later.
+# rule correlation_plots:
+#     """
+#     Generate enhanced correlation plots with LOWESS smoothing.
+#     Outputs are named distinctly from correlation_analysis's (0.6-cor-with-
+#     places-500-data-sentiment.py) so the two rules can never silently
+#     overwrite each other regardless of execution order.
+#     """
+#     input:
+#         script="src/04_validation/correlation/0.6.2-cor-p-value-and-plot.py",
+#         data=config['workspace'] + "/data/sentiment_places_data_joined.parquet",
+#         config="setting.json"
+#     output:
+#         "outputs/correlation/facet_scatter_lowess_all_years.png",
+#         "outputs/correlation/places_correlation_summary_lowess_check.csv",
+#         expand("outputs/correlation/scatter_sent_vs_MHLTH_{year}_lowess.png",
+#                year=ANALYSIS_YEARS)
+#     log:
+#         "outputs/logs/correlation_plots.log"
+#     resources:
+#         cpus=4,
+#         mem_mb=32000,
+#         runtime=60,
+#         partition="shared"
+#     shell:
+#         """
+#         /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
+#         """
 
 # ========== Utility Rules ==========
 
