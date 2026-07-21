@@ -46,6 +46,8 @@ rule all:
         # Gini analysis (All Years)
         "outputs/gini/lorenz_curve.png",
         "outputs/gini/gini-summary.txt",
+        # Temporal stability (confidence-tier time series)
+        "outputs/validation/temporal_stability.png",
         # Validation outputs (2020 Only)
         "outputs/validation/log2CR_userdefined_7class_2020.png",
         "outputs/gini/2020_lorenz_curve.png",
@@ -78,7 +80,8 @@ rule validation_only:
     input:
         expand("outputs/validation/{plot}.png",
                plot=["log2CR_by_census_tract", "log2CR_userdefined_7class"]),
-        "outputs/gini/lorenz_curve.png"
+        "outputs/gini/lorenz_curve.png",
+        "outputs/validation/temporal_stability.png"
 
 rule correlation_only:
     """
@@ -359,6 +362,30 @@ rule validation_histogram:
         cpus=4,
         mem_mb=32000,
         runtime=60,
+        partition="shared"
+    shell:
+        """
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
+        """
+
+rule temporal_stability:
+    """
+    Technical Validation: national tweet volume and tweet-weighted mean
+    sentiment by confidence tier, 2010-2023 (Figure: temporal_stability.png)
+    """
+    input:
+        script="src/04_validation/representativeness/06_temporal_stability.py",
+        agg_flag=config['aggregated_sentiment_output'] + "/.aggregation_complete",
+        config="setting.json"
+    output:
+        png="outputs/validation/temporal_stability.png",
+        csv="outputs/validation/temporal_stability_stats.csv"
+    log:
+        "outputs/logs/temporal_stability.log"
+    resources:
+        cpus=4,
+        mem_mb=16000,
+        runtime=30,
         partition="shared"
     shell:
         """
