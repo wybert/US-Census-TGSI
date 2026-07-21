@@ -120,6 +120,29 @@ rule download_census_data:
         /n/home11/xiaokangfu/.conda/envs/geo/bin/python src/01_data_acquisition/0.1-download_cenus_data.py > {log} 2>&1
         """
 
+rule download_census_population:
+    """
+    Download 2020 Census block-level population (P1_001N) via the Census API.
+    Every CR/Gini/coordinate-artifact-detection step in Stage 04 depends on
+    this data; previously it was only ever run manually, outside the DAG.
+    """
+    input:
+        script="src/01_data_acquisition/0.1.2-download-census-population.py",
+        config="setting.json"
+    output:
+        expand(config['census_pop'] + "/{state}.parquet", state=STATES)
+    log:
+        "outputs/logs/download_census_population.log"
+    resources:
+        cpus=1,
+        mem_mb=2000,
+        runtime=60,
+        partition="shared"
+    shell:
+        """
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
+        """
+
 # ========== Data Validation ==========
 
 rule find_missing_sentiment:
@@ -174,6 +197,34 @@ rule merge_tweets_sentiment:
         """
 
 # ========== Spatial Join ==========
+
+rule merge_census_blocks:
+    """
+    Merge the 51 state block shapefiles into a single geoparquet (+ a
+    non-geometry parquet for non-spatial queries). spatial_join's `census=`
+    input requires this file; previously nothing in the DAG knew how to
+    produce it if missing, so a from-scratch run would fail with a
+    MissingInputException rather than regenerating it.
+    """
+    input:
+        script="src/03_spatial_join/0.3.8-merge-census-to-parquet.py",
+        zips=expand(config['census_data_2020'] + "/tl_2020_{state}_tabblock20.zip",
+                    state=STATES),
+        config="setting.json"
+    output:
+        geoparquet=config['census_data_2020'] + "/us_census_blocks_2020.geoparquet",
+        parquet=config['census_data_2020'] + "/us_census_blocks_2020.parquet"
+    log:
+        "outputs/logs/merge_census_blocks.log"
+    resources:
+        cpus=4,
+        mem_mb=80000,
+        runtime=90,
+        partition="shared"
+    shell:
+        """
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
+        """
 
 rule spatial_join:
     """
@@ -240,6 +291,7 @@ rule aggregate_tweet_counts:
     input:
         script="src/04_validation/aggregation/02_merge_counts_and_pop_all_years.py",
         agg_flag=config['aggregated_sentiment_output'] + "/.aggregation_complete",
+        census_pop=expand(config['census_pop'] + "/{state}.parquet", state=STATES),
         config="setting.json"
     output:
         config['workspace'] + "/data/all_years_tweet_count.parquet",
@@ -286,6 +338,7 @@ rule calculate_coverage_ratio_2020:
     input:
         script="src/04_validation/aggregation/03_calculate_cr_2020.py",
         tweets=config['aggregated_sentiment_output'] + "/yearly_2020.parquet",
+        census_pop=expand(config['census_pop'] + "/{state}.parquet", state=STATES),
         config="setting.json"
     output:
         config['workspace'] + "/data/tweet_count_2020_with_pop_CR.parquet"
@@ -503,6 +556,7 @@ rule aggregate_to_tract_level:
     input:
         script="src/04_validation/aggregation/05_prepare_correlation_tracts.py",
         agg_flag=config['aggregated_sentiment_output'] + "/.aggregation_complete",
+        census_pop=expand(config['census_pop'] + "/{state}.parquet", state=STATES),
         config="setting.json"
     output:
         config['workspace'] + "/data/sentiment_places_data_joined.parquet"
