@@ -34,8 +34,14 @@ DISCRIM_COL = "MAMMOUSE_CrudePrev"
 
 # ========== 工具函数 ==========
 def weighted_corr(x, y, w):
-    """人口加权 Pearson 相关。"""
-    x, y, w = map(lambda s: pd.Series(s, dtype=float), (x, y, w))
+    """人口加权 Pearson 相关。Drops rows where x, y, or w is NaN (np.sum on a
+    pandas Series defaults to skipna=True, so without this an unfiltered NaN
+    silently mismatches the numerator/denominator N instead of raising)."""
+    x = pd.Series(x, dtype=float).reset_index(drop=True)
+    y = pd.Series(y, dtype=float).reset_index(drop=True)
+    w = pd.Series(w, dtype=float).reset_index(drop=True)
+    valid = x.notna() & y.notna() & w.notna()
+    x, y, w = x[valid], y[valid], w[valid]
     m_x = np.sum(w * x) / np.sum(w); m_y = np.sum(w * y) / np.sum(w)
     cov = np.sum(w * (x - m_x) * (y - m_y))
     varx = np.sum(w * (x - m_x)**2); vary = np.sum(w * (y - m_y)**2)
