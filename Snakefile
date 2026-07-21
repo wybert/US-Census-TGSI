@@ -117,7 +117,7 @@ rule download_census_data:
         partition="shared"
     shell:
         """
-        python src/01_data_acquisition/0.1-download_cenus_data.py > {log} 2>&1
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python src/01_data_acquisition/0.1-download_cenus_data.py > {log} 2>&1
         """
 
 # ========== Data Validation ==========
