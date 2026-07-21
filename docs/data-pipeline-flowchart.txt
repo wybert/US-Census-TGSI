@@ -6,19 +6,30 @@
 │                         第0步：数据准备 (Data Preparation)                   │
 └─────────────────────────────────────────────────────────────────────────────┘
 
-    ┌──────────────────────┐
-    │  src/01_data_acquisition/
-    │  0.1 数据下载         │
-    │  Download Census     │
-    │  TIGER/Line          │
-    │  Shapefiles          │
-    └──────────┬───────────┘
-               │ 51 states (TABBLOCK20)
+    ┌──────────────────────┐         ┌──────────────────────┐
+    │  src/01_data_acquisition/       │  src/01_data_acquisition/
+    │  0.1 数据下载         │         │  0.1.2 人口数据下载   │
+    │  Download Census     │         │  Download Census      │
+    │  TIGER/Line          │         │  Population (P1_001N) │
+    │  Shapefiles          │         │  via api.census.gov   │
+    │  (no API key needed) │         │  (needs census_api_key│
+    │                       │         │  in setting.json)     │
+    └──────────┬───────────┘         └──────────┬───────────┘
+               │ 51 states (TABBLOCK20)          │ 51 states
+               ▼                                 ▼
+    ┌──────────────────────┐         ┌──────────────────────┐
+    │  Census 2020         │         │  Census 2020         │
+    │  Block Geometries    │         │  Block Population     │
+    │  (Shapefiles)        │         │  (parquet, census_pop)│
+    └──────────┬───────────┘         └──────────────────────┘
+               │
+               │ src/03_spatial_join/0.3.8 (merge_census_blocks)
+               │ Merges 51 state shapefiles → single geoparquet
                ▼
     ┌──────────────────────┐
-    │  Census 2020         │
-    │  Block Geometries    │
-    │  (Shapefiles)        │
+    │  us_census_blocks_   │
+    │  2020.geoparquet /   │
+    │  .parquet             │
     └──────────────────────┘
 
 
@@ -64,7 +75,10 @@
                         │
                         ├─→ 0.1.6: Compute (GPU)
                         ├─→ 0.1.7: Submit jobs
-                        ├─→ 0.1.8: Verify & copy
+                        ├─→ 0.1.8: Verify (Snakemake rule verify_recomputed_
+                        │           sentiment is verify-only; --copy into
+                        │           the shared holylabs archive stays a
+                        │           manual, deliberate step, not in the DAG)
                         │
                         ▼
            ┌────────────────────────┐
@@ -112,10 +126,10 @@
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────┐         ┌──────────────────────┐
-│  Tweets with         │         │  Census Block        │
-│  Sentiment           │         │  Geometries          │
-│  (lat/lon points     │         │  (51 states)         │
-│   + GPS field        │         │                      │
+│  Tweets with         │         │  us_census_blocks_   │
+│  Sentiment           │         │  2020.geoparquet     │
+│  (lat/lon points     │         │  (from Step 0, 0.3.8 │
+│   + GPS field        │         │  merge_census_blocks)│
 │   + spatialerror)    │         │                      │
 └──────────┬───────────┘         └──────────┬───────────┘
            │                                │
@@ -153,6 +167,7 @@
 ┌──────────────────────┐         ┌──────────────────────┐
 │  Tweets with         │         │  Census Population   │
 │  GEOID20             │         │  Data (parquet)      │
+│                       │         │  (from Step 0, 0.1.2)│
 └──────────┬───────────┘         └──────────┬───────────┘
            │                                │
            │    src/04_validation/          │

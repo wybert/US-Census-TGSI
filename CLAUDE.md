@@ -34,6 +34,7 @@ snakemake check_data_quality     # Validate sentiment file completeness
 snakemake validation_only        # CR + Gini validation only
 snakemake correlation_only       # CDC PLACES correlation only
 snakemake spatial_join_all       # Spatial join all years
+snakemake verify_recomputed_sentiment  # Verify GPU-recomputed sentiment files (verify-only, no --copy)
 snakemake clean                  # Remove output PNGs/CSVs/logs
 snakemake clean_all              # Remove all generated data (destructive)
 ```
@@ -56,6 +57,7 @@ All data paths are defined here and loaded by Snakemake (`configfile: "setting.j
 - `geo_tweets_archive_base_path`, `sentiment_file_base_path`: raw inputs on holylabs
 - `census_data_2020`: merged census block geoparquet
 - `census_pop`: population parquet for CR calculations
+- `census_api_key`: required by `download_census_population` (calls `api.census.gov`); the TIGER/Line shapefile download (`download_census_data`, `www2.census.gov`) needs no key
 
 ## Repository Structure
 - `src/`: Pipeline scripts numbered by step (e.g., `0.1-`, `0.3.9-`).
@@ -72,6 +74,7 @@ All data paths are defined here and loaded by Snakemake (`configfile: "setting.j
 - **log2(CR)**: 0 = proportional, -1 = 50% underrepresented, +1 = 200% overrepresented.
 - **mask_low_coverage**: Filter tracts with <20 tweets before correlation analysis.
 - **Population weighting**: Use `weighted_corr()` / `weighted_spearman()` for tract-level stats.
+- **is_artifact (coordinate-artifact blocks)**: Post-2019 place-tagged (non-GPS) tweets resolve to a fixed named-place centroid; when that centroid falls inside a near-empty census block, tweets collapse onto one block nationwide (e.g. the geographic center of Texas). Flagged as `population < 50 AND tweet_count > 5,000` (2020-only scripts) or `> 50,000` (all-years scripts) and **excluded** from CR/Gini normalization totals and tract rollups — not just flagged and left in. See `03_calculate_cr_2020.py` / `03_calculate_cr_all_years.py` / `05_prepare_correlation_tracts.py`.
 
 ## Important Notes
 - **GEOID formats**: Block IDs = 15 digits; tract IDs = first 11 digits of GEOID20.
@@ -79,6 +82,7 @@ All data paths are defined here and loaded by Snakemake (`configfile: "setting.j
 - **DuckDB**: Use for out-of-core processing on block-level data; avoid loading full datasets into pandas.
 - **Spatial join scale**: 900GB+ RAM, ~40-50 hours on 110 cores for the full 2010-2023 run.
 - **Spatial join output**: Each input file → 51 per-state parquets (e.g., `2020_10_01_00-tl_2020_06_tabblock20.parquet`).
+- **Block vs. tract Gini are NOT interchangeable**: block-level Gini is inflated by small-area sampling noise (MAUP), not a finer-grained version of the tract-level statistic. Any figure/table described as "tract-level" in the paper must be computed from tract-aggregated inputs — `gini_analysis`/`gini_analysis_2020` read `cr_data` from the tract-merged geo files, not block-level CR output.
 - **Script naming**: All scripts start with a number prefix indicating step order.
 - **Keep updated**: After any pipeline change, update `Snakefile` and `docs/data-pipeline-flowchart.txt`.
 - **Scope**: Only create or edit files within this repository directory.
