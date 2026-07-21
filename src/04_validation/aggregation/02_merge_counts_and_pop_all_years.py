@@ -39,14 +39,17 @@ FROM read_parquet('{census_pop_path}');
 """)
 
 print(f"Merging counts with population...")
+# Population-first join: start from the full 8.18M-block universe and
+# COALESCE missing tweet counts to 0, so blocks with zero tweets across
+# all years are retained (not silently dropped from the population total).
 con.execute(f"""
 CREATE TABLE geo_tweet_with_pop AS
 SELECT
-	t.GEOID20,
-	t.tweet_count,
+	p.GEOID20,
+	COALESCE(t.tweet_count, 0) AS tweet_count,
 	p.population
-FROM geo_tweet_sum t
-LEFT JOIN census_pop_agg p
+FROM census_pop_agg p
+LEFT JOIN geo_tweet_sum t
 	ON t.GEOID20 = p.GEOID20;
 """)
 

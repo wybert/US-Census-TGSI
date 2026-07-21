@@ -139,9 +139,12 @@ A critical challenge in social media-based indices is the potential for geograph
 \[
 CR = \frac{\text{Tweet Count}}{\text{Population}}
 \]
-We visualize the spatial distribution of $\log_2(CR)$ to identify areas of over-representation (positive values) and under-representation (negative values). Across the full 2010--2023 period, tweets were observed in 6.47 million of the 8.18 million census blocks, covering 83,826 of the 84,414 census tracts with land area (99.3\%); restricting to tracts with at least 20 tweets retains the large majority of tracts (Figure~\ref{fig:log2cr_map}). The spatial pattern shows the expected over-representation of dense urban cores and tourist destinations and under-representation of sparsely populated rural areas.
 
-To quantify the inequality of the tweet distribution relative to population, we computed the Gini coefficient and the Lorenz curve (Figure~\ref{fig:lorenz}). Over the full period the Gini coefficient is 0.79, and for the single year 2020 it is 0.97, indicating that tweet volume is substantially more concentrated than population --- a well-known property of social-media data that users should account for, for example by population-weighting or by masking low-coverage units (we flag tracts with fewer than 20 tweets via the \texttt{mask\_low\_coverage} field).
+Place-tagged (non-GPS) tweets are geocoded by the source platform to a fixed centroid for the named place (e.g.\ the geographic center of a state or city); when that centroid coordinate falls inside a census block with a very small population, all tweets sharing that place tag are attributed to a single near-empty block, producing an implausible tweet-per-resident ratio that reflects geocoding precision rather than local activity. We detect and mask such blocks by flagging any block with population under 50 and a tweet count exceeding a volume implausible for that population (50,000 over 2010--2023; 5,000 within a single year), and exclude flagged blocks from the national totals used to normalize CR and from all tract-level rollups (choropleth maps, Gini/Lorenz, and the health-indicator correlation below), in addition to the existing $<$20-tweet low-coverage mask.
+
+We visualize the spatial distribution of $\log_2(CR)$ to identify areas of over-representation (positive values) and under-representation (negative values). Across the full 2010--2023 period, tweets were observed in 6.47 million of the 8.18 million census blocks, covering 83,784 of the 84,414 census tracts with land area (99.3\%) after masking (Figure~\ref{fig:log2cr_map}). The spatial pattern shows the expected over-representation of dense urban cores and tourist destinations and under-representation of sparsely populated rural areas.
+
+To quantify the inequality of the tweet distribution relative to population, we computed the Gini coefficient and the Lorenz curve across census tracts (Figure~\ref{fig:lorenz}). Over the full period the Gini coefficient is 0.55, and for the single year 2020 it is 0.93, indicating that tweet volume is substantially more concentrated than population --- a well-known property of social-media data that users should account for, for example by population-weighting or by masking low-coverage units (we flag tracts with fewer than 20 tweets via the \texttt{mask\_low\_coverage} field).
 
 \subsection*{Temporal Stability and Data Consistency}
 
@@ -153,7 +156,7 @@ The comparison of confidence tiers reveals a structural change in the data that 
 
 As a measure of external validity, we examined the relationship between our Twitter-derived sentiment indices and community-level mental health outcomes. We utilized the CDC PLACES dataset (Local Data for Better Health), specifically the crude prevalence of "Mental health not good for $\ge$14 days" (MHLTH) at the census tract level.
 
-We aggregated our block-level sentiment to the tract level for the years 2020, 2021, and 2022 to match the available CDC data, and computed Pearson and Spearman correlations (both unweighted and population-weighted) between annual mean sentiment and MHLTH prevalence (Table~\ref{tab:correlation}, Figure~\ref{fig:correlation}). For all three years the correlation is negative and highly statistically significant: Pearson $r = -0.049$ in 2020 ($N = 52{,}589$, $p = 7\times10^{-29}$, 95\% CI $[-0.057, -0.040]$), $-0.041$ in 2021 ($N = 48{,}136$, $p = 2\times10^{-19}$), and $-0.041$ in 2022 ($N = 50{,}349$, $p = 2\times10^{-20}$); Spearman coefficients are of the same sign and significance, and population weighting leaves the estimates essentially unchanged. Consistent with prior ecological associations between aggregate social-media sentiment and well-being, the effect sizes are modest, as expected when comparing noisy, self-selected social-media expression against survey-based prevalence at fine spatial resolution.
+We aggregated our block-level sentiment to the tract level for the years 2020, 2021, and 2022 to match the available CDC data, and computed Pearson and Spearman correlations (both unweighted and population-weighted) between annual mean sentiment and MHLTH prevalence (Table~\ref{tab:correlation}, Figure~\ref{fig:correlation}). For all three years the correlation is negative and highly statistically significant: Pearson $r = -0.047$ in 2020 ($N = 52{,}500$, $p = 8\times10^{-27}$, 95\% CI $[-0.055, -0.038]$), $-0.039$ in 2021 ($N = 48{,}046$, $p = 7\times10^{-18}$), and $-0.042$ in 2022 ($N = 50{,}217$, $p = 6\times10^{-21}$); Spearman coefficients are of the same sign and significance, and population weighting leaves the estimates essentially unchanged. Consistent with prior ecological associations between aggregate social-media sentiment and well-being, the effect sizes are modest, as expected when comparing noisy, self-selected social-media expression against survey-based prevalence at fine spatial resolution.
 
 As a discriminant (placebo) check, we repeated the analysis against an indicator with no \textit{a priori} link to expressed sentiment --- the crude prevalence of recent mammography use (MAMMOUSE). This control yields \textit{positive} correlations of $+0.04$ to $+0.07$ across the three years, opposite in sign to the mental-distress association. The combination of a significant negative correlation with mental distress and a non-negative correlation with the placebo indicator supports the convergent and divergent validity of the index as a proxy for community-level subjective well-being, while underscoring that it should be used as an aggregate signal rather than a precise predictor.
 
@@ -167,7 +170,7 @@ This dataset comprises approximately 2.8 billion geo-tagged tweets in the U.S. f
 
 We recommend that users observe the following caveats:
 \begin{enumerate}
-    \item \textbf{Geographic non-representativeness.} Tweet volume is far more spatially concentrated than population (Gini $\approx 0.79$). Sparsely populated and rural areas are under-sampled. We recommend population weighting and masking low-coverage units (the \texttt{mask\_low\_coverage} field flags tracts with fewer than 20 tweets); coverage-ratio fields are provided to support reweighting.
+    \item \textbf{Geographic non-representativeness.} Tweet volume is more spatially concentrated than population (tract-level Gini $\approx 0.55$ over 2010--2023; $\approx 0.93$ for 2020 alone). Sparsely populated and rural areas are under-sampled. We recommend population weighting and masking low-coverage units (the \texttt{mask\_low\_coverage} field flags tracts with fewer than 20 tweets or with a coordinate-collapse artifact from place-tag geocoding; see Methods); coverage-ratio fields are provided to support reweighting.
     \item \textbf{2019 geotagging regime change.} Following Twitter's June 2019 removal of precise geotagging \cite{huUnderstandingRemovalPrecise2020}, the data shift from predominantly GPS-precise to predominantly place-tagged tweets. The confidence tiers and \texttt{confidence} score capture this; for analyses spanning the transition, use the confidence-weighted `All' tier rather than the `Strict' subset.
     \item \textbf{Variable temporal coverage.} Annual tweet volume reflects the collection coverage of the source archive and varies markedly between years (Figure~\ref{fig:temporal}); 2010--2011 are too sparse for reliable estimates and should be excluded.
     \item \textbf{Demographic skew.} Twitter users are not demographically representative of the general population; expressed sentiment reflects the posting population, not all residents, and should be interpreted as an aggregate, relative signal rather than an absolute measure of well-being.
@@ -265,7 +268,7 @@ All authors declare that they have no conflicts of interest. Authors used ChatGP
 \begin{figure}[ht]
     \centering
     \includegraphics[width=0.6\linewidth]{figures/lorenz_curve.png}
-    \caption{Lorenz curve of tweet volume against population across census tracts (2010--2023). The departure from the line of equality corresponds to a Gini coefficient of 0.79, indicating that tweets are substantially more spatially concentrated than population.}
+    \caption{Lorenz curve of tweet volume against population across census tracts (2010--2023). The departure from the line of equality corresponds to a Gini coefficient of 0.55, indicating that tweets are substantially more spatially concentrated than population.}
     \label{fig:lorenz}
 \end{figure}
 
@@ -291,9 +294,9 @@ All authors declare that they have no conflicts of interest. Authors used ChatGP
 \toprule
 Year & $N$ & $r$ & $r_w$ & $\rho$ & $r$ (discriminant) & $p$ \\
 \midrule
-2020 & 52,589 & $-0.049$ & $-0.048$ & $-0.043$ & $+0.065$ & $7\times10^{-29}$ \\
-2021 & 48,136 & $-0.041$ & $-0.038$ & $-0.030$ & $+0.039$ & $2\times10^{-19}$ \\
-2022 & 50,349 & $-0.041$ & $-0.039$ & $-0.023$ & $+0.048$ & $2\times10^{-20}$ \\
+2020 & 52,500 & $-0.047$ & $-0.047$ & $-0.040$ & $+0.062$ & $8\times10^{-27}$ \\
+2021 & 48,046 & $-0.039$ & $-0.037$ & $-0.027$ & $+0.037$ & $7\times10^{-18}$ \\
+2022 & 50,217 & $-0.042$ & $-0.040$ & $-0.023$ & $+0.047$ & $6\times10^{-21}$ \\
 \bottomrule
 \end{tabular}
 \end{table}

@@ -16,6 +16,7 @@ agg_stats = os.path.join(config['aggregated_sentiment_output'], "daily_202[0-2].
 # Only the GIS-friendly wide releases this analysis uses (tweet years 2020-2022).
 # Excludes the 2024 file, which is long-format (different schema) and would break read_csv_auto.
 places_data = os.path.join(config['places_data'], "*202[0-2]_release.csv")
+census_pop_path = os.path.join(config['census_pop'], "*.parquet")
 output_path = os.path.join(workspace, "data/sentiment_places_data_joined.parquet")
 
 print(f"Connecting to DuckDB...")
@@ -37,16 +38,30 @@ CREATE OR REPLACE TABLE daily AS (
 );
 """)
 
+print(f"Loading census population (for coordinate-artifact detection)...")
+con.execute(f"""
+CREATE OR REPLACE TABLE pop AS (
+  SELECT GEOID20::VARCHAR AS GEOID20_block, CAST(population AS DOUBLE) AS P_i
+  FROM read_parquet('{census_pop_path}')
+);
+""")
+
 print(f"Aggregating block-year stats...")
+# Coordinate-artifact blocks (place-tagged tweets collapsed onto a fixed
+# named-place centroid that falls inside a near-empty block; see
+# 03_calculate_cr_2020.py) are excluded from the tract sum below, not just
+# flagged, so they cannot inflate a tract's sentiment/tweet total.
 con.execute("""
 CREATE OR REPLACE TABLE block_year AS (
   SELECT
-    year,
-    GEOID20_block,
-    SUM(t)                                   AS tweets_year_block,
-    SUM(t * s) / NULLIF(SUM(t),0)            AS sent_mean_year_block,
-    CASE WHEN SUM(t) < 20 THEN 1 ELSE 0 END  AS mask_lowcov_block
-  FROM daily
+    d.year,
+    d.GEOID20_block,
+    SUM(d.t)                                   AS tweets_year_block,
+    SUM(d.t * d.s) / NULLIF(SUM(d.t),0)        AS sent_mean_year_block,
+    CASE WHEN SUM(d.t) < 20 THEN 1 ELSE 0 END  AS mask_lowcov_block,
+    CASE WHEN MAX(p.P_i) < 50 AND SUM(d.t) > 5000 THEN 1 ELSE 0 END AS is_artifact
+  FROM daily d
+  LEFT JOIN pop p ON p.GEOID20_block = d.GEOID20_block
   GROUP BY 1,2
 );
 """)
@@ -62,6 +77,7 @@ CREATE OR REPLACE TABLE tract_year AS (
       / NULLIF(SUM(tweets_year_block),0)           AS sent_mean_year_tract,
     CASE WHEN SUM(tweets_year_block) < 20 THEN 1 ELSE 0 END AS mask_low_coverage
   FROM block_year
+  WHERE is_artifact = 0
   GROUP BY 1,2
 );
 """)

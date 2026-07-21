@@ -438,11 +438,15 @@ rule validation_classification_2020:
 
 rule gini_analysis:
     """
-    Compute Gini coefficient and Lorenz curve (All Years)
+    Compute Gini coefficient and Lorenz curve (All Years).
+    Uses the tract-level merged geo file (matches the maps and the paper's
+    "across census tracts" framing) rather than the raw block-level CR
+    file -- Gini computed on 8.1M individual blocks is a different,
+    much higher-inequality statistic than Gini across 84K census tracts.
     """
     input:
         script="src/04_validation/representativeness/03_calculate_gini_lorenz.py",
-        cr_data=config['workspace'] + "/data/all_years_tweet_count_with_pop_CR.parquet",
+        cr_data=config['workspace'] + "/data/census_tracts_merged_shifted_geo.parquet",
         config="setting.json"
     output:
         "outputs/gini/lorenz_curve.png",
@@ -457,16 +461,16 @@ rule gini_analysis:
         partition="shared"
     shell:
         """
-        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1 || echo "Gini analysis completed with warnings"
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} --input {input.cr_data} > {log} 2>&1 || echo "Gini analysis completed with warnings"
         """
 
 rule gini_analysis_2020:
     """
-    Compute Gini coefficient and Lorenz curve (2020 Only)
+    Compute Gini coefficient and Lorenz curve (2020 Only, tract level)
     """
     input:
         script="src/04_validation/representativeness/03_calculate_gini_lorenz.py",
-        cr_data=config['workspace'] + "/data/tweet_count_2020_with_pop_CR.parquet",
+        cr_data=config['workspace'] + "/data/census_tracts_merged_shifted_geo_2020.parquet",
         config="setting.json"
     output:
         "outputs/gini/2020_lorenz_curve.png",
