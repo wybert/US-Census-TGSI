@@ -145,7 +145,7 @@ Place-tagged (non-GPS) tweets are geocoded by the source platform to a fixed cen
 
 We visualize the spatial distribution of $\log_2(CR)$ to identify areas of over-representation (positive values) and under-representation (negative values). Across the full 2010--2023 period, tweets were observed in 6.47 million of the 8.18 million census blocks, covering 83,784 of the 84,414 census tracts with land area (99.3\%) after masking (Figure~\ref{fig:log2cr_map}). The spatial pattern shows the expected over-representation of dense urban cores and tourist destinations and under-representation of sparsely populated rural areas.
 
-To quantify the inequality of the tweet distribution relative to population, we computed the Gini coefficient and the Lorenz curve across census tracts (Figure~\ref{fig:lorenz}). Over the full period the Gini coefficient is 0.55, and for the single year 2020 it is 0.93, indicating that tweet volume is substantially more concentrated than population --- a well-known property of social-media data that users should account for, for example by population-weighting or by masking low-coverage units (we flag tracts with fewer than 20 tweets via the \texttt{mask\_low\_coverage} field).
+To quantify the inequality of the tweet distribution relative to population, we computed the Gini coefficient and the Lorenz curve across census tracts (Figure~\ref{fig:lorenz}), for both the full 2010--2023 period and the temporally-matched year-2020 subset (Figure~\ref{fig:lorenz2020}). Over the full period, 83,784 of 83,848 tracts (99.9\%) are reportable, covering 99.99\% of the US population, with Gini $=0.55$ and $\log_2(CR)$ deciles P10/P50/P90 of $-2.36/-0.79/0.68$. For 2020 alone, 52,548 tracts (62.7\%) are reportable, covering 66.3\% of the population, with Gini $=0.93$ and $\log_2(CR)$ deciles $-6.15/-3.79/0.48$ --- both a smaller reportable share and a wider, more negatively-skewed CR distribution than the cumulative all-years figures, consistent with a single year sampling a narrower and less complete slice of geotagged activity. Tweet volume is substantially more concentrated than population in both cases --- a well-known property of social-media data that users should account for, for example by population-weighting or by masking low-coverage units (we flag tracts with fewer than 20 tweets via the \texttt{mask\_low\_coverage} field).
 
 \subsection*{Temporal Stability and Data Consistency}
 
@@ -269,9 +269,23 @@ All authors declare that they have no conflicts of interest. Authors used ChatGP
 
 \begin{figure}[ht]
     \centering
+    \includegraphics[width=\linewidth]{figures/log2CR_map_2020.png}
+    \caption{Coverage Ratio for 2020 alone, $\log_2(CR)$ by census tract, using same-year (temporally matched) tweets and population. Only 52,548 of 83,848 tracts (62.7\%) are reportable, versus 99.9\% for the cumulative 2010--2023 map (Figure~\ref{fig:log2cr_map}), reflecting the narrower slice of geotagged activity captured within a single year.}
+    \label{fig:log2cr_map_2020}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
     \includegraphics[width=0.6\linewidth]{figures/lorenz_curve.png}
     \caption{Lorenz curve of tweet volume against population across census tracts (2010--2023). The departure from the line of equality corresponds to a Gini coefficient of 0.55, indicating that tweets are substantially more spatially concentrated than population.}
     \label{fig:lorenz}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.6\linewidth]{figures/lorenz_curve_2020.png}
+    \caption{Lorenz curve of tweet volume against population across census tracts for 2020 alone (temporally matched tweets and population). The higher Gini coefficient (0.93) versus the cumulative 2010--2023 curve (Figure~\ref{fig:lorenz}, Gini $=0.55$) reflects both the narrower single-year sample and the absence of the static-population bias discussed in Usage Notes.}
+    \label{fig:lorenz2020}
 \end{figure}
 
 \begin{figure}[ht]
