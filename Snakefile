@@ -169,6 +169,32 @@ rule find_missing_sentiment:
         /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
         """
 
+rule verify_recomputed_sentiment:
+    """
+    Verify the GPU-recomputed sentiment files (CSV readability, required
+    columns, null-score stats) for the post-purge sentiment gap. Verify-only:
+    intentionally does NOT pass --copy, so this rule never writes into the
+    shared holylabs sentiment archive (config['sentiment_file_base_path']).
+    Copying verified files there must stay a deliberate, manual step
+    (run 0.1.8-verify-and-copy-sentiment.py --copy by hand if/when needed).
+    """
+    input:
+        script="src/01_data_acquisition/0.1.8-verify-and-copy-sentiment.py",
+        config="setting.json"
+    output:
+        config['outputs_dir'] + "/recomputed_sentiment_verification.txt"
+    log:
+        "outputs/logs/verify_recomputed_sentiment.log"
+    resources:
+        cpus=1,
+        mem_mb=8000,
+        runtime=120,
+        partition="shared"
+    shell:
+        """
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
+        """
+
 # ========== Tweet-Sentiment Merging ==========
 
 rule merge_tweets_sentiment:
