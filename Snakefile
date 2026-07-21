@@ -541,14 +541,20 @@ rule correlation_analysis:
 
 rule correlation_plots:
     """
-    Generate enhanced correlation plots with LOWESS smoothing
+    Generate enhanced correlation plots with LOWESS smoothing.
+    Outputs are named distinctly from correlation_analysis's (0.6-cor-with-
+    places-500-data-sentiment.py) so the two rules can never silently
+    overwrite each other regardless of execution order.
     """
     input:
         script="src/04_validation/correlation/0.6.2-cor-p-value-and-plot.py",
         data=config['workspace'] + "/data/sentiment_places_data_joined.parquet",
         config="setting.json"
     output:
-        "outputs/correlation/facet_scatter_lowess_all_years.png"
+        "outputs/correlation/facet_scatter_lowess_all_years.png",
+        "outputs/correlation/places_correlation_summary_lowess_check.csv",
+        expand("outputs/correlation/scatter_sent_vs_MHLTH_{year}_lowess.png",
+               year=ANALYSIS_YEARS)
     log:
         "outputs/logs/correlation_plots.log"
     resources:

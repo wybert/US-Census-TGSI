@@ -52,9 +52,16 @@ def summarize_group(g: pd.DataFrame) -> pd.Series:
     return pd.Series(dict(N=len(g), pearson=pear, spearman=spear,
                           pearson_w=wpear, spearman_w=wspear))
 
+# NOTE: written under a distinct name (not places_correlation_summary.csv)
+# so this script can never silently overwrite 0.6-cor-with-places-500-data-
+# sentiment.py's output, which has additional columns (p-value, CI,
+# discriminant) that Table 3 is sourced from and this script does not
+# compute. This file is a secondary cross-check using a library
+# (statsmodels DescrStatsW) weighted-correlation implementation instead of
+# the hand-rolled one in 0.6, plus the LOWESS-smoothed plots below.
 summary = df.groupby("year", sort=True, group_keys=False).apply(summarize_group, include_groups=False).reset_index()
 Path(OUT_DIR).mkdir(parents=True, exist_ok=True)
-summary.to_csv(f"{OUT_DIR}/places_correlation_summary.csv", index=False)
+summary.to_csv(f"{OUT_DIR}/places_correlation_summary_lowess_check.csv", index=False)
 
 # --- 十分位“人口加权均值”曲线（作为平滑趋势线） ---
 def decile_curve_xy(g: pd.DataFrame, x_col="mhlth", y_col="sent_mean_year_tract", w_col="pop", q=10):
@@ -100,7 +107,10 @@ for y in years:
     ax.set_ylabel("Tweet sentiment mean")
     ax.set_title(f"Sentiment vs. Mental Distress — {y}")
     fig.tight_layout()
-    fig.savefig(f"{OUT_DIR}/scatter_sent_vs_MHLTH_{y}.png", dpi=300)
+    # _lowess suffix: distinct from 0.6-cor-with-places-500-data-sentiment.py's
+    # scatter_sent_vs_MHLTH_{year}.png (same base name would silently
+    # overwrite it with a plot lacking that script's decile-curve annotation).
+    fig.savefig(f"{OUT_DIR}/scatter_sent_vs_MHLTH_{y}_lowess.png", dpi=300)
     plt.close(fig)
 
 # --- 画：FacetGrid 小多图（所有年份同一页） ---
