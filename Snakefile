@@ -40,9 +40,11 @@ rule all:
     Default target: complete all analysis
     """
     input:
-        # Validation outputs (All Years)
-        expand("outputs/validation/{plot}.png",
-               plot=["log2CR_by_census_tract", "log2CR_userdefined_7class"]),
+        # Validation outputs (All Years). log2CR_by_census_tract (the
+        # continuous-colormap map from validation_histogram) is not used in
+        # the manuscript -- log2CR_userdefined_7class (classified map) is
+        # the figure actually shown -- so it is not built by default.
+        "outputs/validation/log2CR_userdefined_7class.png",
         # Gini analysis (All Years)
         "outputs/gini/lorenz_curve.png",
         "outputs/gini/gini-summary.txt",
@@ -78,8 +80,7 @@ rule validation_only:
     Run validation analysis only
     """
     input:
-        expand("outputs/validation/{plot}.png",
-               plot=["log2CR_by_census_tract", "log2CR_userdefined_7class"]),
+        "outputs/validation/log2CR_userdefined_7class.png",
         "outputs/gini/lorenz_curve.png",
         "outputs/validation/temporal_stability.png"
 
