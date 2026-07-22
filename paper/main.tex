@@ -161,6 +161,14 @@ We aggregated our block-level sentiment to the tract level for the years 2020, 2
 
 As a discriminant (placebo) check, we repeated the analysis against an indicator with no \textit{a priori} link to expressed sentiment --- the crude prevalence of recent mammography use (MAMMOUSE). This control yields \textit{positive} correlations of $+0.04$ to $+0.06$ across the three years, opposite in sign to the mental-distress association. The combination of a significant negative correlation with mental distress and a non-negative correlation with the placebo indicator supports the convergent and divergent validity of the index as a proxy for community-level subjective well-being, while underscoring that it should be used as an aggregate signal rather than a precise predictor.
 
+\subsection*{Confidence-Tier Sensitivity}
+
+The `All' tier used throughout the analyses above counts every geotagged tweet regardless of its spatial-join confidence score (Methods), including tweets whose location was resolved from a place tag with tens of kilometers of reported positional uncertainty. To characterize how much this confidence-blind counting affects the representativeness and correlation results above, and to help users choose an appropriate tier for their own analysis, we repeated the Coverage Ratio/Gini and health-correlation calculations restricted to the Medium ($\ge 0.5$), High ($\ge 0.8$), and Strict ($=1.0$) confidence tiers (Table~\ref{tab:tier_sensitivity}).
+
+Gini drops substantially between the All tier and any confidence-filtered tier --- from 0.55 to 0.40 over 2010--2023, and from 0.93 to 0.69 for 2020 alone --- while Medium, High, and Strict are nearly indistinguishable from one another (Gini within 0.001 of each other in both windows). This indicates that essentially all of the additional apparent geographic inequality captured by the All tier comes from a small number of very-low-confidence tweets: coordinate-collapse artifacts (place-tagged tweets resolved to a fixed named-place centroid, discussed above) structurally carry tens of kilometers of reported positional uncertainty and are excluded from any tier requiring confidence $\ge 0.5$. Reportable-tract coverage falls only modestly moving from All to a confidence-filtered tier (e.g., 62.7\% to 58.0--58.3\% of tracts in 2020), so users primarily concerned with the cleanest possible geographic-representativeness statistic obtain most of that benefit at the Medium tier already, with little further gain from High or Strict.
+
+The health correlation is more mixed: restricting to a confidence-filtered tier strengthens the association in 2020 ($r=-0.047\rightarrow-0.055$) and 2022 ($-0.042\rightarrow-0.050$), but slightly weakens it in 2021 ($-0.039\rightarrow-0.031$); in all three years the sign and rough magnitude are preserved. We do not interpret this as evidence that one tier is uniformly more ``correct'' for correlation analyses --- rather, it illustrates that the confidence-blind All tier is not simply a superset that safely subsumes the confidence-filtered tiers' information. Users running representativeness-sensitive analyses (coverage maps, Gini/Lorenz, per-capita comparisons) should consider Medium tier or stricter; users prioritizing maximum tweet volume for simple activity counts, where positional precision matters less, may reasonably prefer the All tier while remaining aware of its wider representativeness uncertainty.
+
 \section*{Usage Notes}
 
 % The Usage Notes should contain brief instructions to assist other researchers with reuse of the data. This may include discussion of software packages that are suitable for analysing the assay data files, suggested downstream processing steps (e.g. normalization, etc.), or tips for integrating or comparing the data records with other datasets. Authors are encouraged to provide code, programs or data-processing workflows if they may help others understand or use the data. Please see our code availability policy for advice on supplying custom code alongside Data Descriptor manuscripts.
@@ -171,7 +179,7 @@ This dataset comprises approximately 2.8 billion geo-tagged tweets in the U.S. f
 
 We recommend that users observe the following caveats:
 \begin{enumerate}
-    \item \textbf{Geographic non-representativeness.} Tweet volume is more spatially concentrated than population (tract-level Gini $\approx 0.55$ over 2010--2023; $\approx 0.93$ for 2020 alone). Sparsely populated and rural areas are under-sampled. We recommend population weighting and masking low-coverage units (the \texttt{mask\_low\_coverage} field flags tracts with fewer than 20 tweets or with a coordinate-collapse artifact from place-tag geocoding; see Methods); coverage-ratio fields are provided to support reweighting.
+    \item \textbf{Geographic non-representativeness.} Tweet volume is more spatially concentrated than population (tract-level Gini $\approx 0.55$ over 2010--2023; $\approx 0.93$ for 2020 alone, both computed on the confidence-blind `All' tier). Sparsely populated and rural areas are under-sampled. We recommend population weighting and masking low-coverage units (the \texttt{mask\_low\_coverage} field flags tracts with fewer than 20 tweets or with a coordinate-collapse artifact from place-tag geocoding; see Methods); coverage-ratio fields are provided to support reweighting. For analyses where geographic representativeness matters most, consider using the Medium confidence tier or stricter, which excludes low-confidence (spatially uncertain) tweets and yields a substantially lower, more stable Gini ($\approx 0.40$ over 2010--2023; $\approx 0.69$ for 2020) at only a modest coverage cost --- see Table~\ref{tab:tier_sensitivity} and Confidence-Tier Sensitivity above.
     \item \textbf{Static population baseline for the all-years CR.} Block-level population is only available at the decennial census, so our all-years (2010--2023) Coverage Ratio and Gini normalize 14 years of cumulative tweets against a single 2020 population snapshot, implicitly assuming constant population over the period; blocks with substantial population growth or decline between 2010 and 2023 will have a biased CR. The year-2020 CR/Gini (Gini $\approx 0.93$, above; \texttt{tweet\_count\_2020\_with\_pop\_CR.parquet}) pairs same-year tweets and population and is not subject to this bias; we recommend it, or a user-supplied time-varying population series, for analyses sensitive to this assumption.
     \item \textbf{2019 geotagging regime change.} Following Twitter's June 2019 removal of precise geotagging \cite{huUnderstandingRemovalPrecise2020}, the data shift from predominantly GPS-precise to predominantly place-tagged tweets. The confidence tiers and \texttt{confidence} score capture this; for analyses spanning the transition, use the confidence-weighted `All' tier rather than the `Strict' subset.
     \item \textbf{Variable temporal coverage.} Annual tweet volume reflects the collection coverage of the source archive and varies markedly between years (Figure~\ref{fig:temporal}); 2010--2011 are too sparse for reliable estimates and should be excluded.
@@ -327,6 +335,22 @@ Year & $N$ & $r$ & $r_w$ & $\rho$ & $r$ (discriminant) & $p$ \\
 2020 & 52,500 & $-0.047$ & $-0.047$ & $-0.040$ & $+0.062$ & $8\times10^{-27}$ \\
 2021 & 48,046 & $-0.039$ & $-0.037$ & $-0.027$ & $+0.037$ & $7\times10^{-18}$ \\
 2022 & 50,217 & $-0.042$ & $-0.040$ & $-0.023$ & $+0.047$ & $6\times10^{-21}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Sensitivity of the Gini coefficient, reportable-tract coverage, and health-correlation Pearson $r$ to the confidence tier used for tweet counts and sentiment (see confidence-score definition in Methods). ``All'' applies no confidence filter; Medium/High/Strict restrict to confidence $\ge 0.5/0.8/1.0$ respectively. Reportable tracts and $r$ are reported for 2020 (temporally matched tweets/population; see Usage Notes).}
+\label{tab:tier_sensitivity}
+\begin{tabular}{lrrrrrr}
+\toprule
+Tier & Gini (2010--2023) & Gini (2020) & Reportable tracts (2020) & $r$ 2020 & $r$ 2021 & $r$ 2022 \\
+\midrule
+All    & 0.55 & 0.93 & 52,548 (62.7\%) & $-0.047$ & $-0.039$ & $-0.042$ \\
+Medium & 0.40 & 0.69 & 48,860 (58.3\%) & $-0.055$ & $-0.031$ & $-0.050$ \\
+High   & 0.40 & 0.69 & 48,657 (58.0\%) & $-0.054$ & $-0.030$ & $-0.050$ \\
+Strict & 0.40 & 0.69 & 48,631 (58.0\%) & $-0.054$ & $-0.030$ & $-0.050$ \\
 \bottomrule
 \end{tabular}
 \end{table}
