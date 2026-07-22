@@ -1,20 +1,28 @@
 import duckdb
 import json
 import os
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--tier", choices=["all", "medium", "high", "strict"], default="all",
+                     help="Confidence tier this CR calculation reads/writes (all/medium/high/strict).")
+args = parser.parse_args()
+tier = args.tier
+suffix = "" if tier == "all" else f"_{tier}"
 
 # Load configuration
 with open('setting.json') as f:
     config = json.load(f)
 
 workspace = config['workspace']
-input_path = os.path.join(workspace, "data/all_years_tweet_count_with_pop.parquet")
-output_cr_path = os.path.join(workspace, "data/all_years_tweet_count_with_pop_CR.parquet")
-output_filtered_path = os.path.join(workspace, "data/all_years_tweet_count_with_pop_CR_filtered.parquet")
+input_path = os.path.join(workspace, f"data/all_years_tweet_count_with_pop{suffix}.parquet")
+output_cr_path = os.path.join(workspace, f"data/all_years_tweet_count_with_pop_CR{suffix}.parquet")
+output_filtered_path = os.path.join(workspace, f"data/all_years_tweet_count_with_pop_CR_filtered{suffix}.parquet")
 
 print(f"Connecting to DuckDB...")
 con = duckdb.connect()
 
-print(f"Calculating Coverage Ratio (CR) for All Years...")
+print(f"Calculating Coverage Ratio (CR) for All Years (tier={tier})...")
 # Coordinate-artifact blocks: place-tagged (non-GPS) tweets are geocoded to a
 # fixed named-place centroid (e.g. a state's geographic center); when that
 # centroid falls inside a near-empty census block, the block's raw tweet

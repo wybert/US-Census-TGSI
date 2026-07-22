@@ -1,6 +1,14 @@
 import duckdb
 import json
 import os
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--tier", choices=["all", "medium", "high", "strict"], default="all",
+                     help="Confidence tier this CR calculation reads/writes (all/medium/high/strict).")
+args = parser.parse_args()
+tier = args.tier
+suffix = "" if tier == "all" else f"_{tier}"
 
 # Load configuration
 with open('setting.json') as f:
@@ -9,12 +17,12 @@ with open('setting.json') as f:
 workspace = config['workspace']
 census_pop_path = os.path.join(config['census_pop'], "*.parquet")
 tweets_2020_path = os.path.join(config['aggregated_sentiment_output'], "yearly_2020.parquet")
-output_path = os.path.join(workspace, "data/tweet_count_2020_with_pop_CR.parquet")
+output_path = os.path.join(workspace, f"data/tweet_count_2020_with_pop_CR{suffix}.parquet")
 
 print(f"Connecting to DuckDB...")
 con = duckdb.connect()
 
-print(f"Loading data and calculating CR for 2020...")
+print(f"Loading data and calculating CR for 2020 (tier={tier})...")
 # Coordinate-artifact blocks: place-tagged (non-GPS) tweets are geocoded to a
 # fixed named-place centroid; when that centroid falls inside a near-empty
 # census block, the block's raw tweet count is a coordinate-collapse
@@ -28,7 +36,7 @@ WITH pop AS (
     FROM read_parquet('{census_pop_path}')
 ),
 tweets AS (
-    SELECT GEOID20, CAST(all_tweet_count AS DOUBLE) AS T_i
+    SELECT GEOID20, CAST({tier}_tweet_count AS DOUBLE) AS T_i
     FROM read_parquet('{tweets_2020_path}')
 ),
 joined AS (

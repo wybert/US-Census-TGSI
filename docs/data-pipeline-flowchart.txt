@@ -242,6 +242,49 @@
            └────────────────────────┘
 
 
+┌─────────────────────────────────────────────────────────────────────────────┐
+│           第6步：置信度分层敏感性分析 (Confidence-Tier Sensitivity)          │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    Steps 3-5 above run on the "All" (confidence-blind) tier by default.
+    "All" counts every tweet regardless of spatial-join confidence, so a
+    tweet with 40km of positional uncertainty (e.g. a place-tag centroid
+    collapse) counts identically to a GPS-exact one. is_artifact (Step 3)
+    only catches the most extreme case (population<50); city-level
+    place-tag centroids landing on ordinary-population blocks slip
+    through it, but are structurally excluded by any confidence-based
+    tier filter (Medium/High/Strict all require confidence >= 0.5, which
+    a 40km-uncertainty tweet can never satisfy against a normal block).
+
+    Snakemake target: tier_sensitivity_all (wildcard {tier} =
+    medium/high/strict; "all" tier reuses the Step 3-5 rules unsuffixed)
+
+┌──────────────────────────────────────────────────────────────────┐
+│  Rerun Steps 3-5, restricted to confidence >= 0.5/0.8/1.0:        │
+│  • 02_merge_counts_and_pop_all_years.py --tier {tier}             │
+│  • 03_calculate_cr_all_years.py / 03_calculate_cr_2020.py --tier  │
+│  • 02_merge_geometry.py --skip-geometry (tract rollup, no map)    │
+│  • 03_calculate_gini_lorenz.py (writes Gini + deciles + coverage) │
+│  • 05_prepare_correlation_tracts.py --tier {tier}                 │
+│  • 0.6-cor-with-places-500-data-sentiment.py --tier {tier}        │
+└──────────────────────────────┬────────────────────────────────────┘
+                                │
+                                ▼
+                   ┌─────────────────────────────┐
+                   │  06_tier_comparison_summary │
+                   │  .py combines all 4 tiers   │
+                   │  → tier_sensitivity_summary │
+                   │    .csv (Gini, coverage,    │
+                   │    correlation r, by tier)  │
+                   └─────────────────────────────┘
+
+    Result: Gini on "All" tier is substantially higher (contaminated by
+    low-confidence artifacts) than Medium/High/Strict, which agree
+    closely with each other. Paper reports "All" as the headline
+    (Table 3, Figures) plus this tier comparison as a dedicated
+    Technical Validation subsection ("Confidence-Tier Sensitivity").
+
+
 ================================================================================
                               关键指标说明 (Key Metrics)
 ================================================================================

@@ -35,6 +35,7 @@ snakemake validation_only        # CR + Gini validation only
 snakemake correlation_only       # CDC PLACES correlation only
 snakemake spatial_join_all       # Spatial join all years
 snakemake verify_recomputed_sentiment  # Verify GPU-recomputed sentiment files (verify-only, no --copy)
+snakemake tier_sensitivity_all   # CR/Gini/correlation recomputed under medium/high/strict confidence tiers
 snakemake clean                  # Remove output PNGs/CSVs/logs
 snakemake clean_all              # Remove all generated data (destructive)
 ```
@@ -75,7 +76,7 @@ All data paths are defined here and loaded by Snakemake (`configfile: "setting.j
 - **log2(CR)**: 0 = proportional, -1 = 50% underrepresented, +1 = 200% overrepresented.
 - **mask_low_coverage**: Filter tracts with <20 tweets before correlation analysis.
 - **Population weighting**: Use `weighted_corr()` / `weighted_spearman()` for tract-level stats.
-- **is_artifact (coordinate-artifact blocks)**: Post-2019 place-tagged (non-GPS) tweets resolve to a fixed named-place centroid; when that centroid falls inside a near-empty census block, tweets collapse onto one block nationwide (e.g. the geographic center of Texas). Flagged as `population < 50 AND tweet_count > 5,000` (2020-only scripts) or `> 50,000` (all-years scripts) and **excluded** from CR/Gini normalization totals and tract rollups — not just flagged and left in. See `03_calculate_cr_2020.py` / `03_calculate_cr_all_years.py` / `05_prepare_correlation_tracts.py`.
+- **is_artifact (coordinate-artifact blocks)**: Post-2019 place-tagged (non-GPS) tweets resolve to a fixed named-place centroid; when that centroid falls inside a near-empty census block, tweets collapse onto one block nationwide (e.g. the geographic center of Texas). Flagged as `population < 50 AND tweet_count > 5,000` (2020-only scripts) or `> 50,000` (all-years scripts) and **excluded** from CR/Gini normalization totals and tract rollups — not just flagged and left in. See `03_calculate_cr_2020.py` / `03_calculate_cr_all_years.py` / `05_prepare_correlation_tracts.py`. **This `is_artifact` rule only catches the extreme (near-empty-block) case** — city-level place-tag centroids landing on blocks with ordinary (not near-zero) population slip through it entirely (confirmed: 558 blocks, 18% of the "All" tier's reportable tweet total). These are already caught correctly by the per-tweet `confidence` score (spatialerror vs. block_diameter — see below), just not by `is_artifact`'s population-based heuristic. The confidence-tier sensitivity analysis (`06_tier_comparison_summary.py`, `tier_sensitivity_all` Snakemake target) quantifies the resulting effect: Gini computed on the `All` tier is ~30% higher than on `Medium`/`High`/`Strict` (which structurally exclude these low-confidence artifacts), while Medium/High/Strict agree with each other closely. Paper reports both: `All`-tier numbers as the headline (Table 3, Figures), plus a "Confidence-Tier Sensitivity" subsection with a table showing all four tiers side by side.
 
 ## Important Notes
 - **GEOID formats**: Block IDs = 15 digits; tract IDs = first 11 digits of GEOID20.

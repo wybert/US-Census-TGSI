@@ -33,6 +33,16 @@ YEARS = list(range(2010, 2024))
 MONTHS = list(range(1, 13))  # Spatial join is parallelized per (year, month)
 ANALYSIS_YEARS = [2020, 2021, 2022]  # Years for correlation analysis
 
+# Confidence tiers beyond the default "all" tier (which the unsuffixed
+# rules above already compute). "all" has no filename suffix for backward
+# compatibility with already-published outputs; medium/high/strict use a
+# "_{tier}" suffix -- see the tiered rules under "Confidence-Tier
+# Sensitivity" below.
+CONFIDENCE_TIERS = ["medium", "high", "strict"]
+
+wildcard_constraints:
+    tier = "medium|high|strict"
+
 # ========== Target Rules ==========
 
 rule all:
@@ -657,6 +667,267 @@ rule correlation_analysis:
 #         """
 #         /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
 #         """
+
+# ========== Confidence-Tier Sensitivity ==========
+# The dataset publishes four confidence tiers (strict/high/medium/all;
+# see Methods) so users can trade off spatial precision against coverage.
+# CR/Gini/correlation are normally computed on the "all" tier (rules
+# above), but "all" is confidence-blind: a tweet with 40km of positional
+# uncertainty counts identically to a GPS-exact one. The rules below
+# recompute the same statistics under medium/high/strict so Technical
+# Validation can report how geographic representativeness and the health
+# correlation shift depending on which tier a user selects, rather than
+# presenting a single tier as if it were uncertainty-free.
+
+rule aggregate_tweet_counts_tiered:
+    """
+    Aggregate tweet counts by GEOID20 and merge with population data,
+    restricted to a single confidence tier (medium/high/strict).
+    """
+    input:
+        script="src/04_validation/aggregation/02_merge_counts_and_pop_all_years.py",
+        agg_flag=config['aggregated_sentiment_output'] + "/.aggregation_complete",
+        census_pop=expand(config['census_pop'] + "/{state}.parquet", state=STATES),
+        config="setting.json"
+    output:
+        config['workspace'] + "/data/all_years_tweet_count_{tier}.parquet",
+        config['workspace'] + "/data/all_years_tweet_count_with_pop_{tier}.parquet"
+    log:
+        "outputs/logs/aggregate_tweet_counts_{tier}.log"
+    resources:
+        cpus=4,
+        mem_mb=32000,
+        runtime=120,
+        partition="shared"
+    shell:
+        """
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} --tier {wildcards.tier} > {log} 2>&1
+        """
+
+rule calculate_coverage_ratio_tiered:
+    """
+    Calculate Coverage Ratio (CR) and log2CR metrics (All Years) for a single confidence tier.
+    """
+    input:
+        script="src/04_validation/aggregation/03_calculate_cr_all_years.py",
+        data=config['workspace'] + "/data/all_years_tweet_count_with_pop_{tier}.parquet",
+        config="setting.json"
+    output:
+        config['workspace'] + "/data/all_years_tweet_count_with_pop_CR_{tier}.parquet",
+        config['workspace'] + "/data/all_years_tweet_count_with_pop_CR_filtered_{tier}.parquet"
+    log:
+        "outputs/logs/calculate_coverage_ratio_{tier}.log"
+    resources:
+        cpus=4,
+        mem_mb=16000,
+        runtime=60,
+        partition="shared"
+    shell:
+        """
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} --tier {wildcards.tier} > {log} 2>&1
+        """
+
+rule calculate_coverage_ratio_2020_tiered:
+    """
+    Calculate Coverage Ratio (CR) and log2CR metrics for Year 2020 for a single confidence tier.
+    """
+    input:
+        script="src/04_validation/aggregation/03_calculate_cr_2020.py",
+        tweets=config['aggregated_sentiment_output'] + "/yearly_2020.parquet",
+        census_pop=expand(config['census_pop'] + "/{state}.parquet", state=STATES),
+        config="setting.json"
+    output:
+        config['workspace'] + "/data/tweet_count_2020_with_pop_CR_{tier}.parquet"
+    log:
+        "outputs/logs/calculate_coverage_ratio_2020_{tier}.log"
+    resources:
+        cpus=4,
+        mem_mb=16000,
+        runtime=60,
+        partition="shared"
+    shell:
+        """
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} --tier {wildcards.tier} > {log} 2>&1
+        """
+
+rule tract_rollup_tiered:
+    """
+    Tract-level CR/log2CR rollup (All Years) for a single confidence tier,
+    skipping the expensive TIGER geometry merge (--skip-geometry) since
+    the tier-sensitivity table only needs the Gini/Lorenz statistics, not
+    a map -- avoids the 64-core/450GB geometry job for tiers that are
+    never plotted.
+    """
+    input:
+        script="src/04_validation/representativeness/02_merge_geometry.py",
+        cr_data=config['workspace'] + "/data/all_years_tweet_count_with_pop_CR_{tier}.parquet",
+        config="setting.json"
+    output:
+        config['workspace'] + "/data/census_tracts_rollup_{tier}.parquet"
+    log:
+        "outputs/logs/tract_rollup_{tier}.log"
+    resources:
+        cpus=2,
+        mem_mb=16000,
+        runtime=30,
+        partition="shared"
+    shell:
+        """
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} --input {input.cr_data} --output {output} --skip-geometry > {log} 2>&1
+        """
+
+rule tract_rollup_2020_tiered:
+    """
+    Tract-level CR/log2CR rollup (2020 Only) for a single confidence tier, --skip-geometry.
+    """
+    input:
+        script="src/04_validation/representativeness/02_merge_geometry.py",
+        cr_data=config['workspace'] + "/data/tweet_count_2020_with_pop_CR_{tier}.parquet",
+        config="setting.json"
+    output:
+        config['workspace'] + "/data/census_tracts_rollup_2020_{tier}.parquet"
+    log:
+        "outputs/logs/tract_rollup_2020_{tier}.log"
+    resources:
+        cpus=2,
+        mem_mb=16000,
+        runtime=30,
+        partition="shared"
+    shell:
+        """
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} --input {input.cr_data} --output {output} --skip-geometry > {log} 2>&1
+        """
+
+rule gini_analysis_tiered:
+    """
+    Compute Gini coefficient and Lorenz curve (All Years) for a single confidence tier.
+    """
+    input:
+        script="src/04_validation/representativeness/03_calculate_gini_lorenz.py",
+        cr_data=config['workspace'] + "/data/census_tracts_rollup_{tier}.parquet",
+        config="setting.json"
+    output:
+        "outputs/gini/{tier}_lorenz_curve.png",
+        "outputs/gini/{tier}_lorenz_points.csv",
+        "outputs/gini/{tier}_gini-summary.txt"
+    log:
+        "outputs/logs/gini_analysis_{tier}.log"
+    resources:
+        cpus=2,
+        mem_mb=16000,
+        runtime=30,
+        partition="shared"
+    shell:
+        """
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} --input {input.cr_data} --output-prefix {wildcards.tier}_ > {log} 2>&1 || echo "Gini analysis ({wildcards.tier}) completed with warnings"
+        """
+
+rule gini_analysis_2020_tiered:
+    """
+    Compute Gini coefficient and Lorenz curve (2020 Only) for a single confidence tier.
+    """
+    input:
+        script="src/04_validation/representativeness/03_calculate_gini_lorenz.py",
+        cr_data=config['workspace'] + "/data/census_tracts_rollup_2020_{tier}.parquet",
+        config="setting.json"
+    output:
+        "outputs/gini/2020_{tier}_lorenz_curve.png",
+        "outputs/gini/2020_{tier}_lorenz_points.csv",
+        "outputs/gini/2020_{tier}_gini-summary.txt"
+    log:
+        "outputs/logs/gini_analysis_2020_{tier}.log"
+    resources:
+        cpus=2,
+        mem_mb=16000,
+        runtime=30,
+        partition="shared"
+    shell:
+        """
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} --input {input.cr_data} --output-prefix 2020_{wildcards.tier}_ > {log} 2>&1 || echo "Gini analysis 2020 ({wildcards.tier}) completed with warnings"
+        """
+
+rule aggregate_to_tract_level_tiered:
+    """
+    Aggregate block-level data to tract-level and join with PLACES data, for a single confidence tier.
+    """
+    input:
+        script="src/04_validation/aggregation/05_prepare_correlation_tracts.py",
+        agg_flag=config['aggregated_sentiment_output'] + "/.aggregation_complete",
+        census_pop=expand(config['census_pop'] + "/{state}.parquet", state=STATES),
+        config="setting.json"
+    output:
+        config['workspace'] + "/data/sentiment_places_data_joined_{tier}.parquet"
+    log:
+        "outputs/logs/aggregate_to_tract_level_{tier}.log"
+    resources:
+        cpus=8,
+        mem_mb=64000,
+        runtime=120,
+        partition="shared"
+    shell:
+        """
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} --tier {wildcards.tier} > {log} 2>&1
+        """
+
+rule correlation_analysis_tiered:
+    """
+    Compute correlations between sentiment and PLACES health indicators, for a single confidence tier.
+    """
+    input:
+        script="src/04_validation/correlation/0.6-cor-with-places-500-data-sentiment.py",
+        data=config['workspace'] + "/data/sentiment_places_data_joined_{tier}.parquet",
+        config="setting.json"
+    output:
+        "outputs/correlation/places_correlation_summary_{tier}.csv",
+        expand("outputs/correlation/scatter_sent_vs_MHLTH_{year}_{{tier}}.png",
+               year=ANALYSIS_YEARS)
+    log:
+        "outputs/logs/correlation_analysis_{tier}.log"
+    resources:
+        cpus=4,
+        mem_mb=32000,
+        runtime=60,
+        partition="shared"
+    shell:
+        """
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} --tier {wildcards.tier} > {log} 2>&1
+        """
+
+rule tier_sensitivity_summary:
+    """
+    Combine Gini (all-years + 2020) and health-correlation results across
+    all four confidence tiers (all/medium/high/strict) into one comparison
+    table -- the data source for the paper's tier-sensitivity subsection.
+    """
+    input:
+        script="src/04_validation/aggregation/06_tier_comparison_summary.py",
+        gini_all=expand("outputs/gini/{prefix}gini-summary.txt",
+                         prefix=["", "medium_", "high_", "strict_"]),
+        gini_2020=expand("outputs/gini/2020_{prefix}gini-summary.txt",
+                          prefix=["", "medium_", "high_", "strict_"]),
+        corr=expand("outputs/correlation/places_correlation_summary{suffix}.csv",
+                     suffix=["", "_medium", "_high", "_strict"]),
+        config="setting.json"
+    output:
+        "outputs/validation/tier_sensitivity_summary.csv"
+    log:
+        "outputs/logs/tier_sensitivity_summary.log"
+    resources:
+        cpus=1,
+        mem_mb=4000,
+        runtime=15,
+        partition="shared"
+    shell:
+        """
+        /n/home11/xiaokangfu/.conda/envs/geo/bin/python {input.script} > {log} 2>&1
+        """
+
+rule tier_sensitivity_all:
+    """
+    Convenience target: compute the full confidence-tier sensitivity analysis.
+    """
+    input:
+        "outputs/validation/tier_sensitivity_summary.csv"
 
 # ========== Utility Rules ==========
 

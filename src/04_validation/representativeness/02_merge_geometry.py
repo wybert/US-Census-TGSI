@@ -10,6 +10,10 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--input", help="Path to input block-level CR parquet", default=None)
 parser.add_argument("--output", help="Path to output merged tract geoparquet", default=None)
+parser.add_argument("--skip-geometry", action="store_true",
+                     help="Skip the TIGER tract-geometry merge (expensive: 64 cores/450GB) and "
+                          "write only the tract-level CR/log2CR/mask table. Use when only the "
+                          "Gini/Lorenz statistics are needed, not a map.")
 args = parser.parse_args()
 
 
@@ -55,6 +59,12 @@ with np.errstate(divide="ignore", invalid="ignore"):
 tract["mask_low_coverage"] = ((tract["T_i"] < 20) | (tract["P_i"] <= 0)).astype(int)
 print(f"Tracts: {len(tract)} | T_tot={T_tot:.0f} P_tot={P_tot:.0f} "
       f"(excluded {int((cr['mask_low_coverage']==1).sum())} masked/artifact blocks from tweet sums)")
+
+if args.skip_geometry:
+    tract.to_parquet(output_merged_path)
+    print(f"Wrote {output_merged_path} (no geometry): {len(tract)} tracts, "
+          f"{int(tract['mask_low_coverage'].eq(0).sum())} with coverage")
+    raise SystemExit(0)
 
 # 2) Tract geometry from TIGER 2020 tract shapefiles (GEOID = 11-digit tract).
 tract_geo_dir = os.path.join(config["workspace"], "data", "census_tracts_geo")

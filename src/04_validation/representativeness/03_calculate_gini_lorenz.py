@@ -107,4 +107,14 @@ print(f"Gini (reportable)  : {gini:.3f}")                       # inequality of 
 print(f"log2(CR) quantiles : P10={p10:.2f}, P50={p50:.2f}, P90={p90:.2f}  (reportable)")
 print(f"Outputs saved to   : {OUT_DIR.resolve()}")
 with open(OUT_DIR/f"{prefix}gini-summary.txt", "w") as f:
-    f.write(f"Gini: {gini:.4f}\nFile: {IN.name}\n")
+    f.write(
+        f"Gini: {gini:.4f}\n"
+        f"File: {IN.name}\n"
+        f"Tracts_total: {len(df)}\n"
+        f"Tracts_reportable: {len(reportable)}\n"
+        f"Reportable_share: {len(reportable)/len(df):.6f}\n"
+        f"Covered_pop_share: {covered_pop_share:.6f}\n"
+        f"log2CR_P10: {p10:.4f}\n"
+        f"log2CR_P50: {p50:.4f}\n"
+        f"log2CR_P90: {p90:.4f}\n"
+    )

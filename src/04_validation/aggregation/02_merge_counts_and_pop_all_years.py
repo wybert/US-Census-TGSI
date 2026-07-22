@@ -1,6 +1,14 @@
 import duckdb
 import json
 import os
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--tier", choices=["all", "medium", "high", "strict"], default="all",
+                     help="Confidence tier to aggregate tweet counts from (all/medium/high/strict).")
+args = parser.parse_args()
+tier = args.tier
+suffix = "" if tier == "all" else f"_{tier}"
 
 # Load configuration
 with open('setting.json') as f:
@@ -8,20 +16,20 @@ with open('setting.json') as f:
 
 workspace = config['workspace']
 # Source: freshly rebuilt per-year block aggregates from 01_generate_aggregated_stats.py
-# (all_tweet_count = count across all confidence levels). Was previously the stale
-# pre-purge statistic_results/*day*.parquet on holylabs.
+# ({tier}_tweet_count = count restricted to tweets at or above this confidence tier).
+# Was previously the stale pre-purge statistic_results/*day*.parquet on holylabs.
 agg_stats = os.path.join(config['aggregated_sentiment_output'], "yearly_*.parquet")
 census_pop_path = os.path.join(config['census_pop'], "*.parquet")
-output_counts_path = os.path.join(workspace, "data/all_years_tweet_count.parquet")
-output_with_pop_path = os.path.join(workspace, "data/all_years_tweet_count_with_pop.parquet")
+output_counts_path = os.path.join(workspace, f"data/all_years_tweet_count{suffix}.parquet")
+output_with_pop_path = os.path.join(workspace, f"data/all_years_tweet_count_with_pop{suffix}.parquet")
 
 print(f"Connecting to DuckDB...")
 con = duckdb.connect()
 
-print(f"Aggregating tweet counts from {agg_stats}...")
+print(f"Aggregating tweet counts from {agg_stats} (tier={tier})...")
 con.execute(f"""
 CREATE TABLE geo_tweet_sum AS
-SELECT GEOID20, SUM(all_tweet_count) AS tweet_count
+SELECT GEOID20, SUM({tier}_tweet_count) AS tweet_count
 FROM read_parquet('{agg_stats}')
 GROUP BY GEOID20;
 """)

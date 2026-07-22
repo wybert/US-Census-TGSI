@@ -1,6 +1,14 @@
 import duckdb
 import json
 import os
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--tier", choices=["all", "medium", "high", "strict"], default="all",
+                     help="Confidence tier the tweet counts/sentiment are drawn from (all/medium/high/strict).")
+args = parser.parse_args()
+tier = args.tier
+suffix = "" if tier == "all" else f"_{tier}"
 
 # Load configuration
 with open('setting.json') as f:
@@ -8,8 +16,8 @@ with open('setting.json') as f:
 
 workspace = config['workspace']
 # Source: freshly rebuilt daily block aggregates from 01_generate_aggregated_stats.py.
-# Column mapping vs. legacy statistic_results: day->date_val, tweet_count->all_tweet_count,
-# avg_score->all_sentiment_mean. Was previously the stale pre-purge holylabs files.
+# Column mapping vs. legacy statistic_results: day->date_val, tweet_count->{tier}_tweet_count,
+# avg_score->{tier}_sentiment_mean. Was previously the stale pre-purge holylabs files.
 # Only the years this correlation uses (tweet years 2020-2022). Reading all years'
 # daily files (~470M block-day rows) is unnecessary here and was exhausting memory.
 agg_stats = os.path.join(config['aggregated_sentiment_output'], "daily_202[0-2].parquet")
@@ -17,7 +25,7 @@ agg_stats = os.path.join(config['aggregated_sentiment_output'], "daily_202[0-2].
 # Excludes the 2024 file, which is long-format (different schema) and would break read_csv_auto.
 places_data = os.path.join(config['places_data'], "*202[0-2]_release.csv")
 census_pop_path = os.path.join(config['census_pop'], "*.parquet")
-output_path = os.path.join(workspace, "data/sentiment_places_data_joined.parquet")
+output_path = os.path.join(workspace, f"data/sentiment_places_data_joined{suffix}.parquet")
 
 print(f"Connecting to DuckDB...")
 con = duckdb.connect()
@@ -26,14 +34,14 @@ _tmp = os.path.join(workspace, "tmp_duckdb")
 os.makedirs(_tmp, exist_ok=True)
 con.execute(f"SET temp_directory='{_tmp}'; SET memory_limit='55GB';")
 
-print(f"Loading daily data from {agg_stats}...")
+print(f"Loading daily data from {agg_stats} (tier={tier})...")
 con.execute(f"""
 CREATE OR REPLACE TABLE daily AS (
   SELECT
     EXTRACT('year' FROM CAST(date_val AS DATE))::INT AS year,
     GEOID20::VARCHAR                                  AS GEOID20_block,
-    CAST(all_tweet_count AS DOUBLE)                   AS t,
-    CAST(all_sentiment_mean AS DOUBLE)                AS s
+    CAST({tier}_tweet_count AS DOUBLE)                AS t,
+    CAST({tier}_sentiment_mean AS DOUBLE)             AS s
   FROM read_parquet('{agg_stats}')
 );
 """)

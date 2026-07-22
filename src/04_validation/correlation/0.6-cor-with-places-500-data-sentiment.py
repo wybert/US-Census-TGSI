@@ -8,12 +8,20 @@ and plot scatter + decile curve. Saves per-year PNGs and a CSV summary.
 Edit the PATHS below to your files.
 """
 
+import argparse
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 from scipy import stats
 import json
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--tier", choices=["all", "medium", "high", "strict"], default="all",
+                     help="Confidence tier of the joined tract-year data to correlate (all/medium/high/strict).")
+args = parser.parse_args()
+tier = args.tier
+suffix = "" if tier == "all" else f"_{tier}"
 
 # Load configuration
 with open('setting.json') as f:
@@ -22,7 +30,7 @@ with open('setting.json') as f:
 # Single source of truth: the tract-year sentiment+PLACES join produced by
 # 05_prepare_correlation_tracts.py (cols: year, GEOID20_tract, tweets_year_tract,
 # sent_mean_year_tract, mask_low_coverage, pop, mhlth, mammouse, release_year).
-JOINED_PATH = Path(config["workspace"]) / "data" / "sentiment_places_data_joined.parquet"
+JOINED_PATH = Path(config["workspace"]) / "data" / f"sentiment_places_data_joined{suffix}.parquet"
 
 OUT_DIR = Path(config["outputs_dir"]) / "correlation"; OUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -148,10 +156,10 @@ for year in years:
             bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="0.8", alpha=0.9), fontsize=9)
     ax.grid(alpha=0.2)
     fig.tight_layout()
-    fig.savefig(OUT_DIR / f"scatter_sent_vs_MHLTH_{year}.png", dpi=300)
+    fig.savefig(OUT_DIR / f"scatter_sent_vs_MHLTH_{year}{suffix}.png", dpi=300)
     plt.close(fig)
 
 # —— 跨年摘要表 —— #
 summary = pd.DataFrame(rows).sort_values("year")
-summary.to_csv(OUT_DIR / "places_correlation_summary.csv", index=False)
-print("\nSaved:", (OUT_DIR / 'places_correlation_summary.csv').resolve())
+summary.to_csv(OUT_DIR / f"places_correlation_summary{suffix}.csv", index=False)
+print("\nSaved:", (OUT_DIR / f'places_correlation_summary{suffix}.csv').resolve())
