@@ -13,6 +13,5 @@
   "sentiment_by_tract": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/sentiment_by_tract",
   "outputs_dir": "/n/home11/xiaokangfu/xiaokang/US-Census-TGSI/outputs",
   "sentiment_computing_path": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/sentiment_computing_path",
-  "aggregated_sentiment_output": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/data/aggregated_sentiment_stats",
-  "census_api_key": "YOUR_CENSUS_API_KEY"
+  "aggregated_sentiment_output": "/n/netscratch/cga/Lab/xiaokang/US-Census-TGSI-workspace/data/aggregated_sentiment_stats"
 }

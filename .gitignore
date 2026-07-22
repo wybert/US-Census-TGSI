@@ -69,6 +69,9 @@ slurm-*.out
 Thumbs.db
 desktop.ini
 
+# Secrets
+.env
+
 # Snakemake
 .snakemake/
 *.snakemake.log

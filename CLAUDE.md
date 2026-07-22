@@ -57,7 +57,8 @@ All data paths are defined here and loaded by Snakemake (`configfile: "setting.j
 - `geo_tweets_archive_base_path`, `sentiment_file_base_path`: raw inputs on holylabs
 - `census_data_2020`: merged census block geoparquet
 - `census_pop`: population parquet for CR calculations
-- `census_api_key`: required by `download_census_population` (calls `api.census.gov`); the TIGER/Line shapefile download (`download_census_data`, `www2.census.gov`) needs no key
+
+**Secrets (`.env`, gitignored, not `setting.json`):** `CENSUS_API_KEY` — required by `download_census_population` (calls `api.census.gov`), loaded via `python-dotenv`. The TIGER/Line shapefile download (`download_census_data`, `www2.census.gov`) needs no key. Copy `.env` from a teammate or generate a new key at https://api.census.gov/data/key_signup.html; the script runs without one but gets aggressively rate-limited.
 
 ## Repository Structure
 - `src/`: Pipeline scripts numbered by step (e.g., `0.1-`, `0.3.9-`).

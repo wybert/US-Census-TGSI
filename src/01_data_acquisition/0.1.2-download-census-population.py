@@ -9,11 +9,17 @@ import json
 import requests
 import pandas as pd
 from tqdm import tqdm
+from dotenv import load_dotenv
 import time
 
 # Load configuration
 with open('setting.json') as f:
     config = json.load(f)
+
+# Census API key lives in .env (gitignored), not setting.json, since
+# setting.json is tracked in the (public) repo.
+load_dotenv()
+CENSUS_API_KEY = os.environ.get("CENSUS_API_KEY")
 
 # Output directory for population data
 output_pop_dir = config['census_pop']
@@ -58,8 +64,8 @@ for fips in tqdm(STATE_FIPS, desc="Processing states"):
         "for": "block",
         "in": f"state:{fips} county:*",
     }
-    if config.get("census_api_key"):
-        params["key"] = config["census_api_key"]
+    if CENSUS_API_KEY:
+        params["key"] = CENSUS_API_KEY
 
     tqdm.write(f"↓ Downloading population for State FIPS: {fips}...")
     try:
